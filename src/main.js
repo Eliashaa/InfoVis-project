@@ -1,60 +1,69 @@
 import './style.css'
-import heroImg from './assets/hero.png'
-import javascriptLogo from './assets/javascript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.js'
+import { setupNameSunburst } from './sunburst.js'
 
 document.querySelector('#app').innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${javascriptLogo}" class="framework" alt="JavaScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
+<header class="topbar">
+  <div class="topbar-title">
+    <h1>Scandinavian Baby Names</h1>
+    <p>Sources: SSB (Norway), Statistics Denmark, SCB (Sweden) · 1,385 records · 2000–2022</p>
   </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.js</code> and save to test <code>HMR</code></p>
+  <div class="topbar-filters" id="global-filters" aria-label="Name filters">
+    <div class="filter-control name-control">
+      <label class="filter-label" for="name-query">Name search</label>
+      <input id="name-query" type="search" placeholder="Search names" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-suggestions">
+      <div class="name-suggestions" id="name-suggestions" role="listbox" aria-label="Available matching names" hidden></div>
+    </div>
+    <div class="filter-control year-control">
+      <div class="filter-label-row">
+        <span class="filter-label">Year interval</span>
+        <output id="year-output" for="year-start year-end">2000–2022</output>
+      </div>
+      <div class="year-range-track">
+        <input id="year-start" type="range" min="2000" max="2022" value="2000" aria-label="Start year">
+        <input id="year-end" type="range" min="2000" max="2022" value="2022" aria-label="End year">
+      </div>
+    </div>
+    <fieldset class="gender-control">
+      <legend class="filter-label">Gender</legend>
+      <div class="gender-options">
+        <label><input type="radio" name="gender" value="all" checked><span>All</span></label>
+        <label><input type="radio" name="gender" value="female"><span>Female</span></label>
+        <label><input type="radio" name="gender" value="male"><span>Male</span></label>
+      </div>
+    </fieldset>
   </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
-
-<div class="ticks"></div>
-
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-          <img class="button-icon" src="${javascriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+</header>
+<main class="content-slots">
+  <section class="content-slot" aria-label="Visualization one"></section>
+  <section class="content-slot sunburst-panel" id="name-sunburst" aria-label="Name filter sunburst">
+    <header class="sunburst-header">
+      <div>
+        <p class="sunburst-eyebrow">SCANDINAVIA · 2000–2022</p>
+        <h2>Browse names</h2>
+      </div>
+      <button class="sunburst-reset" type="button">Clear</button>
+    </header>
+    <div class="sunburst-legend" aria-hidden="true">
+      <span>Length</span><span>First letter</span>
+    </div>
+    <div class="sunburst-main">
+      <div class="sunburst-chart" aria-label="Interactive name sunburst"></div>
+      <aside class="sunburst-results">
+        <div class="sunburst-results-header">
+          <h3>Names</h3>
+          <p class="sunburst-count"></p>
+        </div>
+        <p class="sunburst-filter" aria-live="polite">Loading names…</p>
+        <div class="sunburst-name-list" role="listbox" aria-label="Matching names"></div>
+      </aside>
+    </div>
+  </section>
+  <section class="content-slot" aria-label="Visualization three"></section>
+  <section class="content-slot" aria-label="Visualization four"></section>
+</main>
 `
 
-setupCounter(document.querySelector('#counter'))
+setupNameSunburst(
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
