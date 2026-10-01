@@ -176,6 +176,7 @@ export function setupNameSunburst(panel, filterBar) {
       option.addEventListener('pointerdown', (event) => event.preventDefault())
       option.addEventListener('click', () => {
         searchInput.value = entry.name
+        selectedName = entry.name
         suggestionsOpen = false
         activeSuggestionIndex = -1
         updateSelection()
@@ -212,9 +213,14 @@ export function setupNameSunburst(panel, filterBar) {
   function updateSelection() {
     const matches = matchingNames()
     const search = searchInput.value.trim().toLocaleLowerCase('sv-SE')
+    const exactNameSelected = selectedName &&
+      selectedName.toLocaleLowerCase('sv-SE') === search
     const searchMatches = search
-      ? matches.filter((entry) => entry.name.toLocaleLowerCase('sv-SE').includes(search))
+      ? matches.filter((entry) => exactNameSelected
+        ? entry.name === selectedName
+        : entry.name.toLocaleLowerCase('sv-SE').includes(search))
       : []
+    const highlightedNames = new Set(searchMatches.map((entry) => entry.name))
     const listSearchMatches = searchMatches
     const highlights = searchHighlights(searchMatches)
     updateSearchSuggestions()
@@ -240,9 +246,7 @@ export function setupNameSunburst(panel, filterBar) {
       button.setAttribute('aria-pressed', String(entry.name === selectedName))
       button.setAttribute('role', 'option')
       button.setAttribute('aria-selected', String(entry.name === selectedName))
-      const isSearchMatch = Boolean(
-        search && entry.name.toLocaleLowerCase('sv-SE').includes(search)
-      )
+      const isSearchMatch = highlightedNames.has(entry.name)
       button.classList.toggle(
         'search-match',
         isSearchMatch
@@ -250,6 +254,9 @@ export function setupNameSunburst(panel, filterBar) {
       if (isSearchMatch && !firstSearchMatch) firstSearchMatch = button
       button.addEventListener('click', () => {
         selectedName = entry.name
+        searchInput.value = entry.name
+        suggestionsOpen = false
+        activeSuggestionIndex = -1
         updateSelection()
       })
       nameList.append(button)
@@ -265,9 +272,7 @@ export function setupNameSunburst(panel, filterBar) {
             : arcOpacity(node)
         )
         .attr('fill', (node) => {
-          if (isSearchHighlight(node, highlights)) {
-            return node.data.type === 'length' ? '#e8ad26' : '#d75a30'
-          }
+          if (isSearchHighlight(node, highlights)) return baseArcColor(node)
           return search ? '#d5dcda' : baseArcColor(node)
         })
         .attr('stroke', (node) => isSearchHighlight(node, highlights) ? '#713515' : '#fff')
@@ -379,6 +384,7 @@ export function setupNameSunburst(panel, filterBar) {
   })
 
   searchInput.addEventListener('input', () => {
+    selectedName = null
     suggestionsOpen = true
     activeSuggestionIndex = -1
     updateSelection()

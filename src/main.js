@@ -5,7 +5,7 @@ document.querySelector('#app').innerHTML = `
 <header class="topbar">
   <div class="topbar-title">
     <h1>Scandinavian Baby Names</h1>
-    <p>Sources: SSB (Norway), Statistics Denmark, SCB (Sweden) · 1,385 records · 2000–2022</p>
+    <p>Sources: Top 10 names from SSB (Norway), Statistics Denmark, SCB (Sweden) · 1,385 records · 2000–2022</p>
   </div>
   <div class="topbar-filters" id="global-filters" aria-label="Name filters">
     <div class="filter-control name-control">
