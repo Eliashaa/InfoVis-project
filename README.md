@@ -46,3 +46,21 @@ npm run preview
 - Use **Clear** to clear the sunburst selection.
 
 The CSV dataset is located at `public/scandinavia_top10_babynames_2000_2022.csv` and is loaded by the app at runtime.
+
+## Project flow
+
+```mermaid
+flowchart TD
+	A[Scandinavian top-10 CSV] --> B[Normalize gender labels]
+	B --> C[Load names in the app]
+	C --> D[Apply year and gender filters]
+	D --> E[Show available names]
+	E --> F{Choose an interaction}
+	F -->|Type a name| G[Show matching suggestions]
+	F -->|Select a sunburst segment| H[Filter by length or first letter]
+	F -->|Select a name| I[Set exact name search]
+	G --> J[Highlight name characteristics]
+	H --> E
+	I --> J
+	J --> K[Highlight matching sunburst segments]
+```
