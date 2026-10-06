@@ -1,5 +1,8 @@
 import './style.css'
 import { setupNameSunburst } from './sunburst.js'
+import { setupDiffusionTimeline } from './timeline.js'
+import { setupTurnoverChart } from './turnover.js'
+import { setupLifecycleScatter } from './lifecycle.js'
 
 document.querySelector('#app').innerHTML = `
 <header class="topbar">
@@ -23,29 +26,42 @@ document.querySelector('#app').innerHTML = `
         <input id="year-end" type="range" min="2000" max="2022" value="2022" aria-label="End year">
       </div>
     </div>
-    <fieldset class="gender-control">
+    <fieldset class="choice-control">
       <legend class="filter-label">Gender</legend>
-      <div class="gender-options">
+      <div class="choice-options">
         <label><input type="radio" name="gender" value="all" checked><span>All</span></label>
         <label><input type="radio" name="gender" value="female"><span>Female</span></label>
         <label><input type="radio" name="gender" value="male"><span>Male</span></label>
       </div>
     </fieldset>
+    <fieldset class="choice-control">
+      <legend class="filter-label">Country</legend>
+      <div class="choice-options">
+        <label><input type="radio" name="country" value="all" checked><span>All</span></label>
+        <label><input type="radio" name="country" value="Norway"><span>NO</span></label>
+        <label><input type="radio" name="country" value="Sweden"><span>SE</span></label>
+        <label><input type="radio" name="country" value="Denmark"><span>DK</span></label>
+      </div>
+    </fieldset>
+    <button class="filter-reset" type="button">Reset all</button>
   </div>
 </header>
 <main class="content-slots">
-  <section class="content-slot" aria-label="Visualization one"></section>
-  <section class="content-slot sunburst-panel" id="name-sunburst" aria-label="Name filter sunburst">
+  <section class="content-slot turnover-panel" id="name-turnover" aria-label="Naming turnover">
+    <header>
+      <h2>Naming turnover</h2>
+      <p class="turnover-subtitle"></p>
+    </header>
+    <div class="turnover-chart"></div>
+    <div class="turnover-legend" aria-hidden="true"></div>
+  </section>
+  <section class="content-slot sunburst-panel" id="name-sunburst" aria-label="Name characteristics">
     <header class="sunburst-header">
       <div>
-        <p class="sunburst-eyebrow">SCANDINAVIA · 2000–2022</p>
-        <h2>Browse names</h2>
+        <h2>Name characteristics</h2>
+        <p class="sunburst-subtitle">Top-10 names grouped by length, then by first letter</p>
       </div>
-      <button class="sunburst-reset" type="button">Clear</button>
     </header>
-    <div class="sunburst-legend" aria-hidden="true">
-      <span>Length</span><span>First letter</span>
-    </div>
     <div class="sunburst-main">
       <div class="sunburst-chart" aria-label="Interactive name sunburst"></div>
       <aside class="sunburst-results">
@@ -58,12 +74,48 @@ document.querySelector('#app').innerHTML = `
       </aside>
     </div>
   </section>
-  <section class="content-slot" aria-label="Visualization three"></section>
-  <section class="content-slot" aria-label="Visualization four"></section>
+  <section class="content-slot timeline-panel" id="name-timeline" aria-label="Cross-country timeline">
+    <header>
+      <h2>Cross-country diffusion</h2>
+      <p class="timeline-subtitle"></p>
+    </header>
+    <div class="timeline-chart"></div>
+    <div class="timeline-legend" aria-hidden="true">
+      <span><i class="legend-dot legend-peak"></i>Peak rank</span>
+      <span><i class="legend-bar"></i>In top 10</span>
+      <span><i class="legend-bar legend-out"></i>Not in top 10</span>
+    </div>
+  </section>
+  <section class="content-slot lifecycle-panel" id="name-lifecycle" aria-label="Name lifecycle landscape">
+    <header>
+      <h2>Name lifecycle landscape</h2>
+      <p class="lifecycle-subtitle"></p>
+    </header>
+    <div class="lifecycle-chart"></div>
+    <div class="lifecycle-footnote"></div>
+  </section>
 </main>
 `
 
 setupNameSunburst(
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
+
+setupDiffusionTimeline(
+  document.querySelector('#name-timeline'),
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
+
+setupTurnoverChart(
+  document.querySelector('#name-turnover'),
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
+
+setupLifecycleScatter(
+  document.querySelector('#name-lifecycle'),
   document.querySelector('#name-sunburst'),
   document.querySelector('#global-filters')
 )

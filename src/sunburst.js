@@ -1,17 +1,46 @@
 import * as d3 from 'd3'
+import { selectedCountry } from './countries.js'
 
 const LENGTH_BUCKETS = ['3', '4', '5', '6', '7+']
+
+// Twelve colours, all validated against the white chart surface: five hues for the
+// length ring, their five outer-ring tints, one neutral for dimmed arcs and one ink.
+// The bucket order IS the encoding - the rings are circles, so only neighbouring
+// groups touch, and this order was picked for the best adjacent separation
+// (parents CVD dE 17.6 / normal 29.0, tints CVD dE 14.3 / normal 20.5).
+const LETTER_LABEL_MIN = 7.5
+
+// Radial bands, as a fraction of the chart radius. With nothing focused the letter
+// ring fills out to the rim; focusing a length pulls the OTHER groups inward, so the
+// chart never carries a band of dead space.
+const RING_HOLE = 0.34
+const RING_LENGTH_OUT = 0.64
+const RING_LETTER_OUT = 1
+const RING_LETTER_MUTED = 0.8
+const INK = '#08060d'
+const DIMMED = '#f0efec'
 const LENGTH_COLORS = new Map([
-  ['3', '#167c72'],
-  ['4', '#3974a5'],
-  ['5', '#c46c36'],
-  ['6', '#a74f68'],
-  ['7+', '#737d39'],
+  ['3', { arc: '#eda100', tint: '#f2ba45', ink: INK }],
+  ['4', { arc: '#2a78d6', tint: '#649ce1', ink: '#fff' }],
+  ['5', { arc: '#008300', tint: '#45a445', ink: '#fff' }],
+  ['6', { arc: '#e87ba4', tint: '#ee9fbd', ink: INK }],
+  ['7+', { arc: '#4a3aa7', tint: '#7b6fbf', ink: '#fff' }],
 ])
+
+function colorSlot(node) {
+  return LENGTH_COLORS.get(node.data.length ?? node.data.name)
+}
 
 function lengthBucket(name) {
   const length = Array.from(name.normalize('NFC')).length
   return length >= 7 ? '7+' : String(length)
+}
+
+function textSpan(className, text) {
+  const part = document.createElement('span')
+  part.className = className
+  part.textContent = text
+  return part
 }
 
 function buildHierarchy(names) {
@@ -27,6 +56,7 @@ function buildHierarchy(names) {
         name: length,
         type: 'length',
         length,
+        nameCount: namesInBucket.length,
         children: initials.map(([initial, entries]) => ({
           name: initial,
           type: 'letter',
@@ -44,7 +74,7 @@ export function setupNameSunburst(panel, filterBar) {
   const filterText = panel.querySelector('.sunburst-filter')
   const countText = panel.querySelector('.sunburst-count')
   const nameList = panel.querySelector('.sunburst-name-list')
-  const resetButton = panel.querySelector('.sunburst-reset')
+  const resetButton = filterBar.querySelector('.filter-reset')
   const searchInput = filterBar.querySelector('#name-query')
   const suggestionList = filterBar.querySelector('#name-suggestions')
   const startYearInput = filterBar.querySelector('#year-start')
@@ -60,7 +90,15 @@ export function setupNameSunburst(panel, filterBar) {
   let selectedName = null
   let suggestionsOpen = false
   let activeSuggestionIndex = -1
+  let emittedName = null
   let root
+  let focusLength = null
+  // Which of the two focusable things the user touched last, so a segment click and
+  // a name pick can disagree about where the ring should open without fighting
+  let focusSource = null
+  let partitionRoot
+  let arcShape
+  let renderedFocus
 
   function matchingNames() {
     return names.filter((entry) =>
@@ -75,10 +113,12 @@ export function setupNameSunburst(panel, filterBar) {
     const startYear = Number(startYearInput.value)
     const endYear = Number(endYearInput.value)
     const gender = filterBar.querySelector('input[name="gender"]:checked').value
+    const country = selectedCountry(filterBar)
     const matchingRows = rows.filter((row) => {
       const year = Number(row.year)
       return year >= startYear && year <= endYear &&
-        (gender === 'all' || row.sex === gender)
+        (gender === 'all' || row.sex === gender) &&
+        (country === 'all' || row.country === country)
     })
 
     const totals = d3.rollups(
@@ -97,10 +137,6 @@ export function setupNameSunburst(panel, filterBar) {
       }
     }).sort((left, right) => left.name.localeCompare(right.name, 'sv'))
 
-    if (selectedName && !names.some((entry) => entry.name === selectedName)) {
-      selectedName = null
-    }
-
     renderChart()
   }
 
@@ -108,13 +144,17 @@ export function setupNameSunburst(panel, filterBar) {
     let startYear = Number(startYearInput.value)
     let endYear = Number(endYearInput.value)
 
+    // Push the other handle along instead of blocking, so a handle can always move
     if (startYear > endYear) {
-      if (changedHandle === startYearInput) startYear = endYear
-      else endYear = startYear
+      if (changedHandle === startYearInput) endYear = startYear
+      else startYear = endYear
     }
 
     startYearInput.value = String(startYear)
     endYearInput.value = String(endYear)
+    // When the handles overlap, put the one with room to move on top
+    const midYear = (Number(startYearInput.min) + Number(startYearInput.max)) / 2
+    startYearInput.style.zIndex = startYear === endYear && startYear > midYear ? '4' : ''
     yearOutput.textContent = `${startYear}–${endYear}`
     yearTrack.style.setProperty('--range-start', `${((startYear - 2000) / 22) * 100}%`)
     yearTrack.style.setProperty('--range-end', `${((endYear - 2000) / 22) * 100}%`)
@@ -125,13 +165,14 @@ export function setupNameSunburst(panel, filterBar) {
     if (node.type === 'length') {
       selectedLength = node.length
       selectedInitial = null
-      selectedName = null
     } else if (node.type === 'letter') {
       selectedLength = node.length
       selectedInitial = node.initial
-      selectedName = null
     }
 
+    // The highlighted name outlives browsing: only the names list, the search
+    // box or Clear can drop it
+    focusSource = 'segment'
     updateSelection()
   }
 
@@ -144,6 +185,46 @@ export function setupNameSunburst(panel, filterBar) {
       node.data.initial !== selectedInitial
     ) return 0.14
     return 1
+  }
+
+  function inSelectedSegment(node) {
+    if (!selectedLength || node.data.length !== selectedLength) return false
+    return node.data.type === 'length' || !selectedInitial || node.data.initial === selectedInitial
+  }
+
+  function outerBand(node) {
+    if (node.depth === 1) return RING_LENGTH_OUT
+    if (!focusLength) return RING_LETTER_OUT
+    return node.data.length === focusLength ? RING_LETTER_OUT : RING_LETTER_MUTED
+  }
+
+  // Angles are strictly proportional to how many names each group holds, and never
+  // change with the selection: inflating the focused wedge would make the chart
+  // misreport the very distribution it exists to show. Focus is radial only.
+  function layoutAngles() {
+    partitionRoot.sum((node) => node.type === 'letter' ? node.nameCount : 0)
+    d3.partition().size([2 * Math.PI, 3])(partitionRoot)
+  }
+
+  function targetState(node) {
+    return {
+      x0: node.x0,
+      x1: node.x1,
+      inner: root.radius * (node.depth === 1 ? RING_HOLE : RING_LENGTH_OUT),
+      outer: root.radius * outerBand(node) - 1,
+    }
+  }
+
+  function labelTransform(state) {
+    const [x, y] = arcShape.centroid(state)
+    const angle = (state.x0 + state.x1) / 2 * 180 / Math.PI - 90
+    return `translate(${x},${y}) rotate(${angle > 90 ? angle + 180 : angle})`
+  }
+
+  function arcAlpha(node, searchActive, highlights) {
+    if (!searchActive) return arcOpacity(node)
+    if (isSearchHighlight(node, highlights)) return 1
+    return inSelectedSegment(node) ? arcOpacity(node) : 0.16
   }
 
   function searchHighlights(searchMatches) {
@@ -177,6 +258,7 @@ export function setupNameSunburst(panel, filterBar) {
       option.addEventListener('click', () => {
         searchInput.value = entry.name
         selectedName = entry.name
+        focusSource = 'name'
         suggestionsOpen = false
         activeSuggestionIndex = -1
         updateSelection()
@@ -196,18 +278,26 @@ export function setupNameSunburst(panel, filterBar) {
   }
 
   function baseArcColor(node) {
-    const base = d3.color(LENGTH_COLORS.get(node.data.length ?? node.data.name))
-    return (node.depth === 1 ? base : base.brighter(0.65)).formatHex()
+    const slot = colorSlot(node)
+    return node.depth === 1 ? slot.arc : slot.tint
   }
 
-  function labelFor(node, radius, highlights) {
+  // Labels sit on the arc, so the ink follows the fill underneath: white on the
+  // dark length hues, dark on the light tints and on anything dimmed to neutral
+  function labelInk(node, searchActive, highlights) {
+    if (node.depth !== 1) return INK
+    const dimmed = searchActive && !isSearchHighlight(node, highlights) && !inSelectedSegment(node)
+    return dimmed ? INK : colorSlot(node).ink
+  }
+
+  // Letters appear only for the length you picked: the full ring is too crowded to
+  // label, and the reveal doubles as the cue for which group is selected. Labels are
+  // radial, so the arc has to be at least as wide as the glyph is tall.
+  function labelFor(node, radius) {
     if (node.data.type === 'length') return node.data.name
-    if (
-      node.data.type === 'letter' &&
-      (selectedLength === node.data.length || isSearchHighlight(node, highlights)) &&
-      (node.x1 - node.x0) * radius * 0.82 > 10
-    ) return node.data.initial
-    return ''
+    if (node.data.length !== focusLength) return ''
+    const labelBand = (RING_LENGTH_OUT + RING_LETTER_OUT) / 2
+    return (node.x1 - node.x0) * radius * labelBand > LETTER_LABEL_MIN ? node.data.initial : ''
   }
 
   function updateSelection() {
@@ -215,14 +305,25 @@ export function setupNameSunburst(panel, filterBar) {
     const search = searchInput.value.trim().toLocaleLowerCase('sv-SE')
     const exactNameSelected = selectedName &&
       selectedName.toLocaleLowerCase('sv-SE') === search
+    // Matched against all available names rather than the selected segment: the
+    // name stays lit even while you browse a segment it does not belong to
     const searchMatches = search
-      ? matches.filter((entry) => exactNameSelected
+      ? names.filter((entry) => exactNameSelected
         ? entry.name === selectedName
         : entry.name.toLocaleLowerCase('sv-SE').includes(search))
       : []
     const highlightedNames = new Set(searchMatches.map((entry) => entry.name))
-    const listSearchMatches = searchMatches
+    const listedNames = new Set(matches.map((entry) => entry.name))
+    const listSearchMatches = searchMatches.filter((entry) => listedNames.has(entry.name))
     const highlights = searchHighlights(searchMatches)
+    // Dimming only makes sense when there is something left highlighted
+    const searchActive = Boolean(search) && searchMatches.length > 0
+    const searchFocus = searchActive && highlights.lengths.size === 1
+      ? [...highlights.lengths][0]
+      : null
+    focusLength = focusSource === 'name'
+      ? searchFocus ?? selectedLength
+      : selectedLength ?? searchFocus
     updateSearchSuggestions()
     const filters = [
       selectedLength ? `${selectedLength} letters` : null,
@@ -230,11 +331,23 @@ export function setupNameSunburst(panel, filterBar) {
       selectedName ?? null,
     ].filter(Boolean)
 
-    filterText.textContent = filters.length ? filters.join(' · ') : 'All names'
-    const nameLabel = `${matches.length} ${matches.length === 1 ? 'name' : 'names'}`
-    countText.textContent = search
-      ? `${nameLabel} · ${listSearchMatches.length} highlighted`
-      : nameLabel
+    // A filter can remove the selected name from the data. Keeping it and saying so
+    // matches the timeline, which reports the same gap as "Not in the top 10"
+    const nameOutOfRange = Boolean(selectedName) &&
+      !names.some((entry) => entry.name === selectedName)
+
+    filterText.replaceChildren(filters.length ? filters.join(' · ') : 'All names')
+    if (nameOutOfRange) {
+      filterText.append(textSpan('sunburst-outside', 'Not in the top 10 for these filters'))
+    }
+    const countParts = [
+      textSpan('sunburst-count-value', String(matches.length)),
+      textSpan('sunburst-count-unit', matches.length === 1 ? 'name' : 'names'),
+    ]
+    if (search && !nameOutOfRange) {
+      countParts.push(textSpan('sunburst-count-highlight', `${listSearchMatches.length} highlighted`))
+    }
+    countText.replaceChildren(...countParts)
     nameList.replaceChildren()
     let firstSearchMatch = null
 
@@ -255,6 +368,7 @@ export function setupNameSunburst(panel, filterBar) {
       button.addEventListener('click', () => {
         selectedName = entry.name
         searchInput.value = entry.name
+        focusSource = 'name'
         suggestionsOpen = false
         activeSuggestionIndex = -1
         updateSelection()
@@ -265,29 +379,54 @@ export function setupNameSunburst(panel, filterBar) {
     firstSearchMatch?.scrollIntoView({ block: 'nearest' })
 
     if (root) {
-      root.selectAll('.sunburst-arc')
-        .attr('opacity', (node) =>
-          search
-            ? isSearchHighlight(node, highlights) ? 1 : 0.16
-            : arcOpacity(node)
-        )
-        .attr('fill', (node) => {
-          if (isSearchHighlight(node, highlights)) return baseArcColor(node)
-          return search ? '#d5dcda' : baseArcColor(node)
+      const focusChanged = renderedFocus !== focusLength
+      renderedFocus = focusLength
+      const arcs = root.selectAll('.sunburst-arc')
+      const labels = root.selectAll('.sunburst-label')
+
+      if (focusChanged) {
+        arcs.transition().duration(260).attrTween('d', (node) => {
+          const step = d3.interpolate(node.current ?? targetState(node), targetState(node))
+          return (t) => arcShape(node.current = step(t))
         })
-        .attr('stroke', (node) => isSearchHighlight(node, highlights) ? '#713515' : '#fff')
+        labels.transition().duration(260)
+          .attrTween('transform', (node) => () => labelTransform(node.current ?? targetState(node)))
+      } else {
+        arcs.attr('d', (node) => arcShape(node.current = targetState(node)))
+        labels.attr('transform', (node) => labelTransform(node.current ?? targetState(node)))
+      }
+
+      arcs
+        .attr('opacity', (node) => arcAlpha(node, searchActive, highlights))
+        .attr('fill', (node) => {
+          if (isSearchHighlight(node, highlights) || inSelectedSegment(node)) return baseArcColor(node)
+          return searchActive ? DIMMED : baseArcColor(node)
+        })
+        .attr('stroke', '#fff')
         .attr('stroke-width', (node) => {
-          if (isSearchHighlight(node, highlights)) return 4
           const isSelectedLength = node.data.type === 'length' && node.data.length === selectedLength
           const isSelectedLetter = node.data.type === 'letter' &&
             node.data.length === selectedLength && node.data.initial === selectedInitial
-          return isSelectedLength || isSelectedLetter ? 2.5 : 1
+          return isSelectedLength || isSelectedLetter ? 2 : 1
         })
-      root.selectAll('.sunburst-label')
+      labels
         .classed('search-highlight-label', (node) => isSearchHighlight(node, highlights))
-        .text((node) => labelFor(node, root.radius, highlights))
+        .attr('fill', (node) => labelInk(node, searchActive, highlights))
+        .attr('opacity', (node) => arcAlpha(node, searchActive, highlights))
+        .text((node) => labelFor(node, root.radius))
+      const hasSelection = Boolean(selectedLength || selectedInitial || selectedName || search)
       root.select('.sunburst-center')
+        .attr('y', hasSelection ? -6 : 0)
         .text(selectedInitial ?? selectedLength ?? 'ALL')
+      root.select('.sunburst-center-clear')
+        .attr('display', hasSelection ? null : 'none')
+      root.select('.sunburst-center-hit')
+        .classed('is-clearable', hasSelection)
+    }
+
+    if (selectedName !== emittedName) {
+      emittedName = selectedName
+      panel.dispatchEvent(new CustomEvent('namechange', { detail: { name: selectedName } }))
     }
   }
 
@@ -307,9 +446,7 @@ export function setupNameSunburst(panel, filterBar) {
     }
 
     const radius = size / 2 - 4
-    const partitionRoot = d3.hierarchy(buildHierarchy(names))
-      .sum((node) => node.type === 'letter' ? node.nameCount : 0)
-    d3.partition().size([2 * Math.PI, 3])(partitionRoot)
+    partitionRoot = d3.hierarchy(buildHierarchy(names))
 
     const svg = d3.select(chart)
       .append('svg')
@@ -321,21 +458,24 @@ export function setupNameSunburst(panel, filterBar) {
       .attr('transform', `translate(${size / 2},${size / 2})`)
     root.radius = radius
 
-    const arc = d3.arc()
-      .startAngle((node) => node.x0)
-      .endAngle((node) => node.x1)
-      .padAngle((node) => Math.min((node.x1 - node.x0) / 2, 0.007))
-      .padRadius(radius * 1.6)
-      .innerRadius((node) => Math.max(0, node.y0 * radius / 3))
-      .outerRadius((node) => Math.max(0, node.y1 * radius / 3 - 1))
+    // The accessors read an interpolatable state object rather than the node, so
+    // the focus change can be tweened
+    arcShape = d3.arc()
+      .startAngle((state) => state.x0)
+      .endAngle((state) => state.x1)
+      .innerRadius((state) => Math.max(0, state.inner))
+      .outerRadius((state) => Math.max(0, state.outer))
 
+    layoutAngles()
+    renderedFocus = null
     const nodes = partitionRoot.descendants().filter((node) => node.depth > 0)
     const paths = root.selectAll('.sunburst-arc')
       .data(nodes)
       .join('path')
       .attr('class', 'sunburst-arc')
-      .attr('d', arc)
       .attr('fill', baseArcColor)
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 1)
       .attr('role', 'button')
       .attr('tabindex', 0)
       .attr('aria-label', (node) => {
@@ -355,36 +495,92 @@ export function setupNameSunburst(panel, filterBar) {
     paths.append('title').text((node) => {
       return node.data.type === 'letter'
         ? `${node.data.length} letters · ${node.data.initial} · ${node.data.nameCount} names`
-        : `${node.data.length} letters · ${node.value} names`
+        : `${node.data.length} letters · ${node.data.nameCount} names`
     })
 
     root.selectAll('.sunburst-label')
       .data(nodes)
       .join('text')
       .attr('class', 'sunburst-label')
-      .attr('transform', (node) => {
-        const [x, y] = arc.centroid(node)
-        const angle = (node.x0 + node.x1) / 2 * 180 / Math.PI - 90
-        return `translate(${x},${y}) rotate(${angle > 90 ? angle + 180 : angle})`
+      .classed('is-length', (node) => node.depth === 1)
+      .classed('is-letter', (node) => node.depth === 2)
+      .attr('fill', (node) => labelInk(node, false, { lengths: new Set(), letters: new Set() }))
+
+    // The hole doubles as a Clear button, so clicking the middle resets the selection
+    root.append('circle')
+      .attr('class', 'sunburst-center-hit')
+      .attr('r', radius * RING_HOLE)
+      .attr('role', 'button')
+      .attr('tabindex', 0)
+      .attr('aria-label', 'Clear sunburst selection')
+      .on('click', clearSelection)
+      .on('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          clearSelection()
+        }
       })
-      .text((node) => labelFor(node, radius, { lengths: new Set(), letters: new Set() }))
+      .append('title')
+      .text('Clear selection')
 
     root.append('text')
       .attr('class', 'sunburst-center')
       .attr('dy', '0.35em')
 
+    root.append('text')
+      .attr('class', 'sunburst-center-clear')
+      .attr('dy', '0.35em')
+      .attr('y', 13)
+      .text('Clear ×')
+
     updateSelection()
   }
 
-  resetButton.addEventListener('click', () => {
+  function clearSelection() {
     selectedLength = null
     selectedInitial = null
     selectedName = null
+    searchInput.value = ''
+    suggestionsOpen = false
+    activeSuggestionIndex = -1
+    focusSource = null
+    updateSelection()
+  }
+
+  function resetAll() {
+    startYearInput.value = startYearInput.min
+    endYearInput.value = endYearInput.max
+    updateYearRange(startYearInput)
+    startYearInput.dispatchEvent(new Event('input', { bubbles: true }))
+    endYearInput.dispatchEvent(new Event('input', { bubbles: true }))
+
+    ;['gender', 'country'].forEach((group) => {
+      const all = filterBar.querySelector(`input[name="${group}"][value="all"]`)
+      if (!all.checked) {
+        all.checked = true
+        all.dispatchEvent(new Event('change', { bubbles: true }))
+      }
+    })
+
+    clearSelection()
+  }
+
+  resetButton.addEventListener('click', resetAll)
+
+  // Other panels select a name by asking the sunburst rather than holding their own
+  // copy of the selection, so namechange keeps fanning out from one place
+  panel.addEventListener('selectname', (event) => {
+    selectedName = event.detail.name
+    searchInput.value = event.detail.name
+    focusSource = 'name'
+    suggestionsOpen = false
+    activeSuggestionIndex = -1
     updateSelection()
   })
 
   searchInput.addEventListener('input', () => {
     selectedName = null
+    focusSource = 'name'
     suggestionsOpen = true
     activeSuggestionIndex = -1
     updateSelection()
@@ -418,6 +614,8 @@ export function setupNameSunburst(panel, filterBar) {
   startYearInput.addEventListener('input', () => updateYearRange(startYearInput))
   endYearInput.addEventListener('input', () => updateYearRange(endYearInput))
   genderInputs.forEach((input) => input.addEventListener('change', applyGlobalFilters))
+  filterBar.querySelectorAll('input[name="country"]')
+    .forEach((input) => input.addEventListener('change', applyGlobalFilters))
   updateYearRange()
 
   const resizeObserver = new ResizeObserver(renderChart)
