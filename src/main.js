@@ -1,4 +1,3 @@
-import './style.css'
 import { setupNameSunburst } from './sunburst.js'
 import { setupDiffusionTimeline } from './timeline.js'
 import { setupTurnoverChart } from './turnover.js'
