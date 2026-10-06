@@ -4,11 +4,6 @@ import { BABYNAMES_CSV } from './paths.js'
 
 const LENGTH_BUCKETS = ['3', '4', '5', '6', '7+']
 
-// Twelve colours, all validated against the white chart surface: five hues for the
-// length ring, their five outer-ring tints, one neutral for dimmed arcs and one ink.
-// The bucket order IS the encoding - the rings are circles, so only neighbouring
-// groups touch, and this order was picked for the best adjacent separation
-// (parents CVD dE 17.6 / normal 29.0, tints CVD dE 14.3 / normal 20.5).
 const LETTER_LABEL_MIN = 7.5
 
 // Radial bands, as a fraction of the chart radius. With nothing focused the letter
@@ -20,12 +15,21 @@ const RING_LETTER_OUT = 1
 const RING_LETTER_MUTED = 0.8
 const INK = '#08060d'
 const DIMMED = '#f0efec'
+// One hue, graded dark to light, all validated against the white chart surface.
+// Length is ordered data, so the ramp encodes it directly: the shorter the name, the
+// deeper the purple. Five steps for the length ring, five lighter ones for the letter
+// ring. Purple keeps the sunburst clear of the country colours the other panels use.
+//
+// Both ramps pass the ordinal checks on white: monotone lightness, every adjacent gap
+// >= 0.06 OKLCH L, palest step still 3.31:1 (arcs) and 2.30:1 (tints). ink / tintInk
+// are whichever of white or INK wins the contrast on that step, every pairing clearing
+// 4.5:1, so a label never sits on a fill it can't be read against.
 const LENGTH_COLORS = new Map([
-  ['3', { arc: '#eda100', tint: '#f2ba45', ink: INK }],
-  ['4', { arc: '#2a78d6', tint: '#649ce1', ink: '#fff' }],
-  ['5', { arc: '#008300', tint: '#45a445', ink: '#fff' }],
-  ['6', { arc: '#e87ba4', tint: '#ee9fbd', ink: INK }],
-  ['7+', { arc: '#4a3aa7', tint: '#7b6fbf', ink: '#fff' }],
+  ['3', { arc: '#2a2065', tint: '#543f9c', ink: '#fff', tintInk: '#fff' }],
+  ['4', { arc: '#3b2d87', tint: '#6a5ab2', ink: '#fff', tintInk: '#fff' }],
+  ['5', { arc: '#563fab', tint: '#8074c3', ink: '#fff', tintInk: INK }],
+  ['6', { arc: '#7360bd', tint: '#968bd1', ink: '#fff', tintInk: INK }],
+  ['7+', { arc: '#9183ce', tint: '#ada4dd', ink: INK, tintInk: INK }],
 ])
 
 function colorSlot(node) {
@@ -283,12 +287,14 @@ export function setupNameSunburst(panel, filterBar) {
     return node.depth === 1 ? slot.arc : slot.tint
   }
 
-  // Labels sit on the arc, so the ink follows the fill underneath: white on the
-  // dark length hues, dark on the light tints and on anything dimmed to neutral
+  // Labels sit on the arc, so the ink follows the fill underneath. Both rings run
+  // light to dark now, so the letter ring needs the same treatment as the length
+  // ring - its two deepest tints take white too. Dimmed arcs go neutral, so dark.
   function labelInk(node, searchActive, highlights) {
-    if (node.depth !== 1) return INK
     const dimmed = searchActive && !isSearchHighlight(node, highlights) && !inSelectedSegment(node)
-    return dimmed ? INK : colorSlot(node).ink
+    if (dimmed) return INK
+    const slot = colorSlot(node)
+    return node.depth === 1 ? slot.ink : slot.tintInk
   }
 
   // Letters appear only for the length you picked: the full ring is too crowded to
