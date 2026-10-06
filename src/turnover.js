@@ -1,6 +1,7 @@
 import * as d3 from 'd3'
 import { visibleCountries } from './countries.js'
 import { TIME_MARGIN, timeDomain, timeTicks } from './timeAxis.js'
+import { BABYNAMES_CSV } from './paths.js'
 
 export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
   const chart = panel.querySelector('.turnover-chart')
@@ -324,7 +325,7 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
     .forEach((input) => input.addEventListener('change', render))
   new ResizeObserver(render).observe(chart)
 
-  d3.csv('/scandinavia_top10_babynames_2000_2022.csv', (row) => ({
+  d3.csv(BABYNAMES_CSV, (row) => ({
     country: row.country,
     year: Number(row.year),
     sex: row.sex,

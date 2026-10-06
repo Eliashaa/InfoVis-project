@@ -4,7 +4,8 @@ An information visualization project for exploring popular baby names in Denmark
 
 ## Requirements
 
-- Node.js and npm
+- Node.js and npm, for the development server and the production build
+- Or just VS Code with the Live Server extension, for the no-build route below
 
 ## Run locally
 
@@ -22,6 +23,21 @@ An information visualization project for exploring popular baby names in Denmark
 	```
 
 4. Open the local URL printed in the terminal, usually `http://localhost:5173/`.
+
+## Run with Live Server
+
+The app also runs on the VS Code Live Server extension, with no Node, no `npm install`
+and no build step.
+
+1. Install the **Live Server** extension in VS Code.
+2. Right-click `index.html` and choose **Open with Live Server**.
+
+Two things differ from `npm run dev`:
+
+- d3 is loaded from a CDN instead of `node_modules`, through the import map in
+  `index.html`, so this route needs an internet connection. Any npm dependency added
+  later needs an entry in that import map before Live Server can resolve it.
+- Edits reload the whole page, without Vite's hot module replacement.
 
 ## Other commands
 

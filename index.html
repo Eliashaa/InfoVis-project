@@ -2,12 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="./public/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>group-project</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <!-- Lets the browser resolve `import ... from 'd3'` without a bundler, so
+         the page also runs on a plain static server such as Live Server.
+         Vite resolves 'd3' from node_modules and ignores this map. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

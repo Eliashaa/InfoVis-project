@@ -1,5 +1,6 @@
 import * as d3 from 'd3'
 import { selectedCountry } from './countries.js'
+import { BABYNAMES_CSV } from './paths.js'
 
 const LENGTH_BUCKETS = ['3', '4', '5', '6', '7+']
 
@@ -621,7 +622,7 @@ export function setupNameSunburst(panel, filterBar) {
   const resizeObserver = new ResizeObserver(renderChart)
   resizeObserver.observe(chart)
 
-  d3.csv('/scandinavia_top10_babynames_2000_2022.csv').then((loadedRows) => {
+  d3.csv(BABYNAMES_CSV).then((loadedRows) => {
     rows = loadedRows
     dataLoaded = true
     applyGlobalFilters()

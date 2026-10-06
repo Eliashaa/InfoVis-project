@@ -1,5 +1,6 @@
 import * as d3 from 'd3'
 import { visibleCountries } from './countries.js'
+import { BABYNAMES_CSV } from './paths.js'
 
 // Country colour by default, so the cloud itself is readable. Picking a name does not
 // recolour it - it mutes everything else, which keeps the selected dots in their own
@@ -283,7 +284,7 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
     .forEach((input) => input.addEventListener('change', render))
   new ResizeObserver(render).observe(chart)
 
-  d3.csv('/scandinavia_top10_babynames_2000_2022.csv', (row) => ({
+  d3.csv(BABYNAMES_CSV, (row) => ({
     country: row.country,
     year: Number(row.year),
     sex: row.sex,
