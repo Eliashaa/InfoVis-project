@@ -88,7 +88,6 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
     const points = lifecyclePoints()
     if (!points.length) return showMessage('No names match these filters')
 
-    const censored = points.filter((point) => point.censored).length
     subtitle.textContent = selectedName
       ? `How long names stay in the top 10, and how fast they rise — ${selectedName} marked in each country`
       : 'How long do names stay in the top 10, and how fast do they rise? One dot per name and country'
@@ -260,12 +259,7 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
       item.append(swatch, country.name)
       legend.append(item)
     })
-    const note = document.createElement('p')
-    note.className = 'lifecycle-note'
-    note.textContent = censored
-      ? `${points.length} name-country pairs · scroll to zoom, drag to pan, double-click to reset · ${censored} ran past the edge of the period, so their values are minimums`
-      : `${points.length} name-country pairs · scroll to zoom, drag to pan, double-click to reset`
-    panel.querySelector('.lifecycle-footnote').replaceChildren(legend, note)
+    panel.querySelector('.lifecycle-footnote').replaceChildren(legend)
   }
 
   function selectName(name) {

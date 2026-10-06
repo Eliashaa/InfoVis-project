@@ -791,13 +791,6 @@ code {
   flex: none;
 }
 
-
-.lifecycle-note {
-  color: var(--text);
-  font-size: 10px;
-  line-height: 1.25;
-}
-
 .lifecycle-tooltip {
   position: absolute;
   display: flex;
