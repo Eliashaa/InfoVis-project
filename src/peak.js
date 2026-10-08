@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import d3 from './d3.js'
 import { visibleCountries } from './countries.js'
 import { BABYNAMES_CSV } from './paths.js'
 import { jitter, namePoints } from './namePoints.js'

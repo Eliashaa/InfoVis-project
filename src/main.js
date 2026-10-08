@@ -126,3 +126,8 @@ setupPeakScatter(
   document.querySelector('#name-sunburst'),
   document.querySelector('#global-filters')
 )
+
+// Set the initial selection after all panels have registered their listeners.
+document.querySelector('#name-sunburst').dispatchEvent(
+  new CustomEvent('selectname', { detail: { name: 'Elias' } })
+)

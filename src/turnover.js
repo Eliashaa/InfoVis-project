@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import d3 from './d3.js'
 import { visibleCountries } from './countries.js'
 import { TIME_MARGIN, timeDomain, timeTicks } from './timeAxis.js'
 import { BABYNAMES_CSV } from './paths.js'

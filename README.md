@@ -2,56 +2,37 @@
 
 An information visualization project for exploring popular baby names in Denmark, Norway, and Sweden from 2000 to 2022. The dataset contains top-10 records sourced from SSB, Statistics Denmark, and SCB.
 
-## Requirements
-
-- Node.js and npm, for the development server and the production build
-- Or just VS Code with the Live Server extension, for the no-build route below
-
 ## Run locally
 
-1. Open a terminal in the project directory.
-2. Install the dependencies:
+The frontend uses plain HTML, CSS, and JavaScript with a local copy of D3.js 7.9.0.
+No Node.js, npm, framework, transpiler, or build step is needed.
 
-	```sh
-	npm install
-	```
+### Live Server
 
-3. Start the development server:
+Open this folder in VS Code with Live Server installed, then right-click
+`index.html` and choose **Open with Live Server**.
 
-	```sh
-	npm run dev
-	```
+### Python alternative
 
-4. Open the local URL printed in the terminal, usually `http://localhost:5173/`.
-
-## Run with Live Server
-
-The app also runs on the VS Code Live Server extension, with no Node, no `npm install`
-and no build step.
-
-1. Install the **Live Server** extension in VS Code.
-2. Right-click `index.html` and choose **Open with Live Server**.
-
-Two things differ from `npm run dev`:
-
-- d3 is loaded from a CDN instead of `node_modules`, through the import map in
-  `index.html`, so this route needs an internet connection. Any npm dependency added
-  later needs an entry in that import map before Live Server can resolve it.
-- Edits reload the whole page, without Vite's hot module replacement.
-
-## Other commands
-
-Create a production build:
+From this folder, run:
 
 ```sh
-npm run build
+python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Preview the production build locally after building:
+Open `http://127.0.0.1:8000/`. Stop the server with Ctrl+C.
+Use HTTP rather than opening the HTML via `file://`, because JavaScript modules
+and CSV loading need a local server.
 
-```sh
-npm run preview
-```
+### Offline use and submission
+
+D3 is included in `src/vendor/d3.v7.9.0.min.js`, with its original license in
+`src/vendor/D3-LICENSE.txt`. `src/d3.js` makes it available to the native JavaScript
+modules. No CDN or runtime downloads are used.
+
+Include `index.html`, `src/`, and `public/` together in the submission, including
+the D3 license and CSV dataset. With the local server running, the prototype can
+be reloaded and used without an internet connection.
 
 ## Using the visualization
 
