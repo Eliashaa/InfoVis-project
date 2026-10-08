@@ -1,22 +1,11 @@
 import * as d3 from 'd3'
-import { visibleCountries } from './countries.js'
 import { BABYNAMES_CSV } from './paths.js'
+import { jitter, namePoints } from './namePoints.js'
 
 // Country colour by default, so the cloud itself is readable. Picking a name does not
 // recolour it - it mutes everything else, which keeps the selected dots in their own
 // country colours and lets the eye find them without a second hue to learn.
 const MUTED_COLOR = '#c9c7cd'
-
-// Stable per-name offset, so dots do not jump between renders. 112 names land on only
-// ~76 integer cells - 15 of them share (0, 1) alone - so without this the chart would
-// read as far emptier than it is.
-function jitter(name, salt) {
-  let hash = salt
-  for (let index = 0; index < name.length; index += 1) {
-    hash = (hash * 31 + name.charCodeAt(index)) | 0
-  }
-  return ((hash >>> 0) % 1000) / 1000 - 0.5
-}
 
 export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
   const chart = panel.querySelector('.lifecycle-chart')
@@ -33,41 +22,8 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
     return [Math.min(startYear, endYear), Math.max(startYear, endYear)]
   }
 
-  // One dot per name AND country: a name rises and fades on its own schedule in each
-  // country, so pooling them would average away the very differences this chart and
-  // the diffusion timeline exist to show. Emma is three dots, not one.
   function lifecyclePoints() {
-    const [startYear, endYear] = yearInterval()
-    const gender = filterBar.querySelector('input[name="gender"]:checked').value
-    const inWindow = rows.filter((row) =>
-      row.year >= startYear && row.year <= endYear &&
-      (gender === 'all' || row.sex === gender))
-
-    return visibleCountries(filterBar).flatMap((country) => {
-      const forCountry = inWindow.filter((row) => row.country === country.name)
-      return Array.from(d3.group(forCountry, (row) => row.name), ([name, items]) => {
-        const years = Array.from(new Set(items.map((item) => item.year)))
-          .sort((left, right) => left - right)
-        const best = d3.least(items, (left, right) =>
-          left.rank - right.rank || left.year - right.year)
-        const firstYear = years[0]
-        const lastYear = years[years.length - 1]
-
-        return {
-          name,
-          country,
-          rise: best.year - firstYear,
-          longevity: years.length,
-          peakRank: best.rank,
-          peakYear: best.year,
-          firstYear,
-          lastYear,
-          // Already listed when the window opens, or still listed when it closes: we
-          // never saw it arrive or leave, so both numbers are lower bounds
-          censored: firstYear === startYear || lastYear === endYear,
-        }
-      })
-    })
+    return namePoints(rows, filterBar, yearInterval())
   }
 
   function showMessage(text) {

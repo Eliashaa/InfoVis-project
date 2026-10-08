@@ -2,6 +2,8 @@ import { setupNameSunburst } from './sunburst.js'
 import { setupDiffusionTimeline } from './timeline.js'
 import { setupTurnoverChart } from './turnover.js'
 import { setupLifecycleScatter } from './lifecycle.js'
+import { setupRankBump } from './bump.js'
+import { setupPeakScatter } from './peak.js'
 
 document.querySelector('#app').innerHTML = `
 <header class="topbar">
@@ -93,6 +95,37 @@ document.querySelector('#app').innerHTML = `
     <div class="lifecycle-chart"></div>
     <div class="lifecycle-footnote"></div>
   </section>
+  <section class="content-slot bump-panel" id="name-bump" aria-label="Rank trajectories">
+    <header class="bump-header">
+      <div class="bump-heading">
+        <h2>Rank trajectories</h2>
+        <p class="bump-subtitle"></p>
+      </div>
+      <fieldset class="bump-view" aria-label="Rank trajectories view">
+        <div class="choice-options">
+          <label><input type="radio" name="bump-view" value="list" checked><span>Top 10 over time</span></label>
+          <label><input type="radio" name="bump-view" value="countries"><span>Across countries</span></label>
+        </div>
+      </fieldset>
+    </header>
+    <div class="bump-chart"></div>
+  </section>
+  <section class="content-slot peak-panel" id="name-peak" aria-label="Peak against longevity">
+    <header class="peak-header">
+      <div class="peak-heading">
+        <h2>Peak against longevity</h2>
+        <p class="peak-subtitle"></p>
+      </div>
+      <fieldset class="peak-view" aria-label="Peak against longevity view">
+        <div class="choice-options">
+          <label><input type="radio" name="peak-view" value="names" checked><span>Names</span></label>
+          <label><input type="radio" name="peak-view" value="density"><span>Density</span></label>
+        </div>
+      </fieldset>
+    </header>
+    <div class="peak-chart"></div>
+    <div class="peak-legend"></div>
+  </section>
 </main>
 `
 
@@ -115,6 +148,18 @@ setupTurnoverChart(
 
 setupLifecycleScatter(
   document.querySelector('#name-lifecycle'),
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
+
+setupRankBump(
+  document.querySelector('#name-bump'),
+  document.querySelector('#name-sunburst'),
+  document.querySelector('#global-filters')
+)
+
+setupPeakScatter(
+  document.querySelector('#name-peak'),
   document.querySelector('#name-sunburst'),
   document.querySelector('#global-filters')
 )
