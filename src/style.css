@@ -465,6 +465,11 @@ p {
   transition: opacity 140ms ease, stroke-width 140ms ease;
 }
 
+.sunburst-arc:focus:not(:focus-visible),
+.sunburst-center-hit:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .sunburst-arc:focus-visible,
 .sunburst-center-hit:focus-visible,
 .sunburst-name-list button:focus-visible,
