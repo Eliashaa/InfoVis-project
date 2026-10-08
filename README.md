@@ -2,60 +2,43 @@
 
 An information visualization project for exploring popular baby names in Denmark, Norway, and Sweden from 2000 to 2022. The dataset contains top-10 records sourced from SSB, Statistics Denmark, and SCB.
 
-## Requirements
+## Run locally (no build or installation of project dependencies)
 
-- Node.js and npm, for the development server and the production build
-- Or just VS Code with the Live Server extension, for the no-build route below
+The frontend uses plain HTML, CSS, and JavaScript, plus **D3.js 7.9.0**, the library
+permitted by CP4. There is no Node.js, npm, framework, transpiler, or build step.
+D3, the dataset, and all other runtime assets are included locally, so the prototype
+works without an internet connection when served by a local static server.
 
-## Run locally
+### VS Code Live Server
 
-1. Open a terminal in the project directory.
-2. Install the dependencies:
-
-	```sh
-	npm install
-	```
-
-3. Start the development server:
-
-	```sh
-	npm run dev
-	```
-
-4. Open the local URL printed in the terminal, usually `http://localhost:5173/`.
-
-## Run with Live Server
-
-The app also runs on the VS Code Live Server extension, with no Node, no `npm install`
-and no build step.
-
-1. Install the **Live Server** extension in VS Code.
+1. Open this project folder in VS Code with the **Live Server** extension installed.
 2. Right-click `index.html` and choose **Open with Live Server**.
 
-Two things differ from `npm run dev`:
+### Python alternative
 
-- d3 is loaded from a CDN instead of `node_modules`, through the import map in
-  `index.html`, so this route needs an internet connection. Any npm dependency added
-  later needs an entry in that import map before Live Server can resolve it.
-- Edits reload the whole page, without Vite's hot module replacement.
-
-## Other commands
-
-Create a production build:
+From the project directory, run:
 
 ```sh
-npm run build
+python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Preview the production build locally after building:
+Open `http://127.0.0.1:8000/`. Stop the server with Ctrl+C.
+Use a local server rather than opening `index.html` via `file://`, because browser
+JavaScript modules and CSV loading require HTTP.
 
-```sh
-npm run preview
-```
+### Included library and submission
+
+- `src/vendor/d3.v7.9.0.min.js` is the complete local D3 distribution.
+- `src/vendor/D3-LICENSE.txt` contains its license; include it with the code.
+- `src/d3.js` exposes that distribution to the app's native JavaScript modules.
+- Include `index.html`, `src/`, and `public/` together when packaging the prototype.
+  The CSV in `public/` must accompany the code. No internet downloads are needed.
+- To check offline operation, disconnect from the internet, leave the local server
+  running, reload the page, and try the charts and filters.
 
 ## Using the visualization
 
-The dashboard is four linked panels sharing one set of filters. Selecting a name in
+The dashboard is six linked panels sharing one set of filters. Selecting a name in
 any panel updates all of them.
 
 ### Filters
@@ -78,6 +61,8 @@ any panel updates all of them.
   clear the sunburst's own selection.
 - **Cross-country diffusion** — for the selected name, the years it held a place in
   each country's top 10, with its peak rank marked.
+- **Rank trajectories** — ranks over time, with views for the top 10 and cross-country comparisons.
+- **Peak against longevity** — best rank against years in the top 10, with name and density views.
 - **Name lifecycle landscape** — one dot per name and country, plotting how fast a name
   rose (years from entry to peak) against how long it lasted (years in the top 10).
   Scroll to zoom, drag to pan, double-click to reset. Click a dot to select that name.
@@ -104,7 +89,7 @@ flowchart TD
 	A[Scandinavian top-10 CSV] --> B[Normalize gender labels]
 	B --> C[Load names in the app]
 	C --> D[Apply year, gender and country filters]
-	D --> E[Four linked panels]
+	D --> E[Six linked panels]
 	E --> F{Choose an interaction}
 	F -->|Type or pick a name| G[Select a name]
 	F -->|Select a sunburst segment| H[Filter by length or first letter]

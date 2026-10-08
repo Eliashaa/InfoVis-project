@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import d3 from './d3.js'
 
 // The turnover chart and the diffusion timeline sit one above the other in the left
 // column, so they share their horizontal geometry: the same margins and the same

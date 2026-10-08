@@ -1,4 +1,4 @@
-import * as d3 from 'd3'
+import d3 from './d3.js'
 import { visibleCountries } from './countries.js'
 
 // What a name did in one country, reduced to the handful of numbers the two scatter
