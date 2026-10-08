@@ -63,30 +63,97 @@ p {
   margin: 0;
 }
 
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  border-radius: 4px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 15px;
+  line-height: 135%;
+  padding: 4px 8px;
+  background: var(--code-bg);
+}
+
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+  margin-bottom: 24px;
+
+  &:hover {
+    border-color: var(--accent-border);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.hero {
+  position: relative;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+
+  .base {
+    width: 170px;
+    position: relative;
+    z-index: 0;
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+  }
+
+  .framework {
+    z-index: 1;
+    top: 34px;
+    height: 28px;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+      scale(1.4);
+  }
+
+  .vite {
+    z-index: 0;
+    top: 107px;
+    height: 26px;
+    width: auto;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+      scale(0.8);
+  }
+}
+
 #app {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  min-height: 100svh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Six panels no longer fit one screen, so the page scrolls - and the filters stay
-   pinned, because every panel reads them and scrolling away from them would mean
-   scrolling back for every change. */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 24px;
   padding: 24px 32px 20px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
   flex: 0 0 auto;
   box-sizing: border-box;
 }
@@ -112,7 +179,7 @@ p {
 }
 
 .filter-label,
-.choice-control legend {
+.gender-control legend {
   color: var(--text);
   font-size: 11px;
   line-height: 1.2;
@@ -197,7 +264,6 @@ p {
 .year-range-track {
   position: relative;
   height: 34px;
-  cursor: pointer;
   --range-start: 0%;
   --range-end: 100%;
 }
@@ -252,7 +318,6 @@ p {
 }
 
 .year-range-track input::-webkit-slider-thumb {
-  cursor: pointer;
   width: 16px;
   height: 16px;
   margin-top: -6px;
@@ -265,7 +330,6 @@ p {
 }
 
 .year-range-track input::-moz-range-thumb {
-  cursor: pointer;
   width: 12px;
   height: 12px;
   border: 2px solid #fff;
@@ -275,7 +339,7 @@ p {
   pointer-events: auto;
 }
 
-.choice-control {
+.gender-control {
   flex: 0 0 auto;
   min-width: 0;
   margin: 0;
@@ -283,12 +347,12 @@ p {
   border: 0;
 }
 
-.choice-control legend {
+.gender-control legend {
   margin-bottom: 5px;
   padding: 0;
 }
 
-.choice-options {
+.gender-options {
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -297,19 +361,19 @@ p {
   background: #fff;
 }
 
-.choice-options label {
+.gender-options label {
   position: relative;
   cursor: pointer;
 }
 
-.choice-options input {
+.gender-options input {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
 }
 
-.choice-options span {
+.gender-options span {
   display: block;
   padding: 5px 9px;
   border-radius: 3px;
@@ -319,12 +383,12 @@ p {
   text-align: center;
 }
 
-.choice-options input:checked + span {
+.gender-options input:checked + span {
   background: #e5f3f0;
   color: #145d55;
 }
 
-.choice-options input:focus-visible + span {
+.gender-options input:focus-visible + span {
   outline: 2px solid #187b70;
   outline-offset: 2px;
 }
@@ -355,13 +419,13 @@ p {
   max-width: none;
   margin: 0 auto;
   padding: 24px 20px;
-  flex: none;
+  flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 420px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 24px 20px;
-  align-content: start;
+  align-content: center;
   box-sizing: border-box;
 }
 
@@ -381,17 +445,19 @@ p {
   overflow: hidden;
 }
 
-.sunburst-header {
+.sunburst-header,
+.sunburst-legend {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.sunburst-subtitle {
+.sunburst-eyebrow {
   color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 10px;
+  line-height: 1.2;
+  margin: 0 0 3px;
 }
 
 .sunburst-header h2 {
@@ -401,7 +467,7 @@ p {
   margin: 0;
 }
 
-.filter-reset,
+.sunburst-reset,
 .sunburst-name-list button {
   border: 1px solid var(--border);
   background: #fff;
@@ -410,14 +476,13 @@ p {
   cursor: pointer;
 }
 
-.filter-reset {
-  flex: 0 0 auto;
-  padding: 7px 11px;
+.sunburst-reset {
+  padding: 5px 9px;
   border-radius: 4px;
   font-size: 12px;
 }
 
-.filter-reset:hover,
+.sunburst-reset:hover,
 .sunburst-name-list button:hover,
 .sunburst-name-list button[aria-pressed='true'] {
   border-color: #187b70;
@@ -431,9 +496,17 @@ p {
   font-weight: 600;
 }
 
+.sunburst-legend {
+  justify-content: flex-start;
+  color: var(--text);
+  font-size: 10px;
+  line-height: 1.2;
+  gap: 12px;
+}
+
 .sunburst-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
   grid-template-rows: minmax(0, 1fr);
   align-items: center;
   gap: 12px;
@@ -444,8 +517,8 @@ p {
 .sunburst-chart {
   width: 100%;
   height: 100%;
-  max-width: 460px;
-  max-height: 460px;
+  max-width: 340px;
+  max-height: 340px;
   min-width: 0;
   min-height: 0;
   justify-self: center;
@@ -458,60 +531,32 @@ p {
   overflow: visible;
 }
 
-/* stroke and stroke-width are set per-arc in JS - declaring them here would win
-   over the attributes and flatten the selected and highlighted states */
 .sunburst-arc {
   cursor: pointer;
+  stroke: #fff;
+  stroke-width: 1px;
   transition: opacity 140ms ease, stroke-width 140ms ease;
 }
 
-.sunburst-arc:focus:not(:focus-visible),
-.sunburst-center-hit:focus:not(:focus-visible) {
-  outline: none;
-}
-
 .sunburst-arc:focus-visible,
-.sunburst-center-hit:focus-visible,
 .sunburst-name-list button:focus-visible,
-.filter-reset:focus-visible {
+.sunburst-reset:focus-visible {
   outline: 2px solid #187b70;
   outline-offset: 2px;
 }
 
 .sunburst-label {
+  fill: #142c2a;
+  font-size: 9px;
   font-weight: 600;
   pointer-events: none;
   text-anchor: middle;
 }
 
-.sunburst-label.is-length {
-  font-size: 11px;
-}
-
-.sunburst-label.is-letter {
-  font-size: 7.5px;
-}
-
-/* Highlighted labels lean on size and weight: the ink has to stay readable
-   against whichever arc colour is underneath */
 .sunburst-label.search-highlight-label {
+  fill: #713515;
   font-size: 10px;
   font-weight: 700;
-}
-
-.sunburst-center-hit {
-  fill: #08060d;
-  fill-opacity: 0;
-  pointer-events: all;
-  transition: fill-opacity 140ms ease;
-}
-
-.sunburst-center-hit.is-clearable {
-  cursor: pointer;
-}
-
-.sunburst-center-hit.is-clearable:hover {
-  fill-opacity: 0.08;
 }
 
 .sunburst-center {
@@ -519,16 +564,6 @@ p {
   font-size: 9px;
   font-weight: 600;
   text-anchor: middle;
-  pointer-events: none;
-}
-
-.sunburst-center-clear {
-  fill: var(--text);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-anchor: middle;
-  pointer-events: none;
 }
 
 .sunburst-results {
@@ -561,43 +596,10 @@ p {
   margin: 0;
 }
 
-/* Mirrors the timeline's "Not in the top 10" note for a selection the current
-   filters have no data for */
-.sunburst-outside {
-  display: block;
-  color: var(--text);
-  font-size: 11px;
-  font-style: italic;
-  font-weight: 400;
-}
-
 .sunburst-count {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
   color: var(--text);
+  font-size: 10px;
   margin: 0;
-}
-
-.sunburst-count-value {
-  color: var(--text-h);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.sunburst-count-unit {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.sunburst-count-highlight {
-  color: #713515;
-  font-size: 10px;
-  font-weight: 600;
 }
 
 .sunburst-name-list {
@@ -622,731 +624,6 @@ p {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.lifecycle-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.lifecycle-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.lifecycle-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.lifecycle-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.lifecycle-chart svg {
-  cursor: grab;
-}
-
-.lifecycle-chart svg:active {
-  cursor: grabbing;
-}
-
-.lifecycle-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.lifecycle-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.lifecycle-grid line {
-  stroke: #e5e4e7;
-}
-
-.lifecycle-axis text {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.lifecycle-axis path,
-.lifecycle-axis line {
-  stroke: #c9c7cd;
-}
-
-.lifecycle-axis-title {
-  fill: var(--text);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.lifecycle-dot {
-  stroke-width: 1.5px;
-  cursor: pointer;
-}
-
-.lifecycle-dot:focus-visible {
-  outline: 2px solid #187b70;
-  outline-offset: 2px;
-}
-
-.lifecycle-label {
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.lifecycle-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 12px;
-  color: var(--text);
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.lifecycle-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.lifecycle-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.lifecycle-tooltip {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: rgba(0, 0, 0, 0.12) 0 2px 8px;
-  color: var(--text-h);
-  font-size: 11px;
-  line-height: 1.35;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-/* display:flex outranks the UA's [hidden] rule, so hiding needs saying twice */
-.lifecycle-tooltip[hidden] {
-  display: none;
-}
-
-.lifecycle-tooltip strong {
-  font-size: 12px;
-}
-
-.lifecycle-tooltip-note {
-  color: var(--text);
-  font-style: italic;
-}
-
-.turnover-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-/* The turnover chart and the diffusion timeline share an x-scale, so they are pinned
-   one above the other in the first column; see timeAxis.js. Everything else fills in
-   around that pair. The two wide panels take full rows: 23 years of crossings and a
-   cloud of 150-odd dots both read better with the horizontal room. */
-.turnover-panel { grid-column: 1; grid-row: 1; }
-.timeline-panel { grid-column: 1; grid-row: 2; }
-.sunburst-panel { grid-column: 2; grid-row: 1; }
-.lifecycle-panel { grid-column: 2; grid-row: 2; }
-.bump-panel { grid-column: 1 / 3; grid-row: 3; }
-.peak-panel { grid-column: 1 / 3; grid-row: 4; }
-
-.bump-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.bump-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.bump-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.bump-heading {
-  min-width: 0;
-}
-
-.bump-view {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.bump-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.bump-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.bump-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.bump-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.bump-grid {
-  stroke: #f0eff2;
-}
-
-.bump-line {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.bump-node {
-  stroke: #fff;
-  stroke-width: 1.5px;
-}
-
-.bump-hit {
-  fill: transparent;
-  cursor: pointer;
-}
-
-/* In the across-countries view every line is already the selected name, so there is
-   nothing for a click to pick. */
-.bump-hit-static {
-  cursor: default;
-}
-
-.bump-rank,
-.bump-year {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.bump-label {
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.peak-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.peak-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.peak-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.peak-heading {
-  min-width: 0;
-}
-
-.peak-view {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-/* A hairline keeps the palest cells locatable: in a sequential ramp the light end is
-   allowed to recede toward the surface, which would otherwise lose the single-name
-   cells entirely. */
-.peak-hex {
-  stroke: #e5e4e7;
-  stroke-width: 0.75px;
-  cursor: pointer;
-}
-
-.peak-hex-selected {
-  stroke: #08060d;
-  stroke-width: 2px;
-}
-
-.peak-scale {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.peak-scale i {
-  width: 13px;
-  height: 9px;
-  margin-left: 4px;
-  border: 1px solid #e5e4e7;
-  flex: none;
-}
-
-.peak-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.peak-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.peak-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.peak-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.peak-grid line {
-  stroke: #f0eff2;
-}
-
-.peak-axis {
-  color: var(--text);
-  font-size: 10px;
-}
-
-.peak-axis path,
-.peak-axis line {
-  stroke: #e5e4e7;
-}
-
-.peak-axis-title {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.peak-dot {
-  cursor: pointer;
-}
-
-.peak-label {
-  font-size: 10px;
-  font-weight: 600;
-  pointer-events: none;
-}
-
-.peak-ridge {
-  fill: none;
-  stroke: #b9b5c0;
-  stroke-width: 1.5px;
-  stroke-dasharray: 5 4;
-  pointer-events: none;
-}
-
-.peak-ridge-key {
-  width: 14px;
-  height: 0;
-  border-top: 1.5px dashed #b9b5c0;
-  flex: none;
-}
-
-.peak-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  color: var(--text);
-  font-size: 10px;
-}
-
-.peak-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.peak-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.peak-tooltip {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: var(--shadow);
-  font-size: 11px;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 2;
-}
-
-.peak-tooltip-note {
-  color: var(--text);
-  font-style: italic;
-}
-
-.bump-tooltip {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: var(--shadow);
-  font-size: 11px;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 2;
-}
-
-.turnover-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.turnover-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.turnover-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.turnover-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.turnover-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.turnover-grid line {
-  stroke: #e5e4e7;
-}
-
-.turnover-axis text {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.turnover-axis path,
-.turnover-axis line {
-  stroke: #c9c7cd;
-}
-
-.turnover-axis-title {
-  fill: var(--text);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.turnover-line {
-  fill: none;
-  stroke-width: 2px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.turnover-label {
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.turnover-crosshair {
-  stroke: #08060d;
-  stroke-width: 1px;
-  stroke-dasharray: 3 3;
-  opacity: 0.45;
-}
-
-.turnover-dot {
-  stroke: #fff;
-  stroke-width: 2px;
-}
-
-.turnover-capture {
-  fill: transparent;
-  pointer-events: all;
-}
-
-.turnover-tooltip {
-  position: absolute;
-  top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: rgba(0, 0, 0, 0.12) 0 2px 8px;
-  color: var(--text-h);
-  font-size: 11px;
-  line-height: 1.35;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-/* display:flex outranks the UA's [hidden] rule, so hiding needs saying twice */
-.turnover-tooltip[hidden] {
-  display: none;
-}
-
-.turnover-tooltip strong {
-  font-size: 12px;
-}
-
-.turnover-event-dot {
-  stroke-width: 2px;
-}
-
-.turnover-tooltip-event {
-  font-style: italic;
-}
-
-.turnover-key-in {
-  border-radius: 50%;
-  background: #08060d;
-}
-
-.turnover-key-out {
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: inset 0 0 0 2px #08060d;
-}
-
-.turnover-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  color: var(--text);
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.turnover-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.turnover-swatch {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.timeline-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.timeline-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.timeline-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.timeline-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.timeline-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.timeline-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.timeline-grid line {
-  stroke: #e5e4e7;
-}
-
-.timeline-axis text {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.timeline-axis path,
-.timeline-axis line {
-  stroke: #c9c7cd;
-}
-
-.timeline-country {
-  fill: var(--text-h);
-  font-size: 12px;
-  font-weight: 600;
-  text-anchor: end;
-}
-
-/* The empty rail is neutral, never a tint of the country colour: a lighter shade of
-   the same hue reads as "the line continues", not as "the name is absent here" */
-.timeline-track {
-  fill: #d4d3d7;
-}
-
-.timeline-marker {
-  stroke: #fff;
-  stroke-width: 2px;
-}
-
-.timeline-peak-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-anchor: middle;
-}
-
-.timeline-absent {
-  fill: var(--text);
-  font-size: 11px;
-  font-style: italic;
-  text-anchor: middle;
-}
-
-.timeline-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  color: var(--text);
-  font-size: 10px;
-  line-height: 1.2;
-}
-
-.timeline-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.legend-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.legend-peak {
-  background: #3a3f45;
-}
-
-.legend-bar {
-  width: 18px;
-  height: 6px;
-  border-radius: 3px;
-  background: #6b7280;
-}
-
-.legend-bar.legend-out {
-  height: 3px;
-  border-radius: 1.5px;
-  background: #d4d3d7;
 }
 
 @media (max-width: 900px) {
@@ -1374,7 +651,7 @@ p {
     flex: 1 1 220px;
   }
 
-  .choice-control {
+  .gender-control {
     flex: 0 0 auto;
   }
 }
@@ -1404,7 +681,7 @@ p {
     width: auto;
   }
 
-  .choice-options label {
+  .gender-options label {
     flex: 1;
   }
 
@@ -1414,18 +691,6 @@ p {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
     grid-auto-rows: 380px;
-  }
-
-  /* One column, so the pinned placement above has to be released or the panels
-     would all pile into the cells it names. */
-  .turnover-panel,
-  .timeline-panel,
-  .sunburst-panel,
-  .lifecycle-panel,
-  .bump-panel,
-  .peak-panel {
-    grid-column: auto;
-    grid-row: auto;
   }
 
   .sunburst-panel {
