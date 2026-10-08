@@ -197,6 +197,7 @@ p {
 .year-range-track {
   position: relative;
   height: 34px;
+  cursor: pointer;
   --range-start: 0%;
   --range-end: 100%;
 }
@@ -251,6 +252,7 @@ p {
 }
 
 .year-range-track input::-webkit-slider-thumb {
+  cursor: pointer;
   width: 16px;
   height: 16px;
   margin-top: -6px;
@@ -263,6 +265,7 @@ p {
 }
 
 .year-range-track input::-moz-range-thumb {
+  cursor: pointer;
   width: 12px;
   height: 12px;
   border: 2px solid #fff;
