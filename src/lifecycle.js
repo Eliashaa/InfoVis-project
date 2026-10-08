@@ -45,7 +45,7 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
     if (!points.length) return showMessage('No names match these filters')
 
     subtitle.textContent = selectedName
-      ? `How long names stay in the top 10, and how fast they rise — ${selectedName} marked in each country`
+      ? `How long names stay in the top 10, and how fast they rise. ${selectedName} marked in each country`
       : 'How long do names stay in the top 10, and how fast do they rise? One dot per name and country'
 
     const margin = { top: 10, right: 14, bottom: 34, left: 42 }
@@ -194,7 +194,7 @@ export function setupLifecycleScatter(panel, sunburstPanel, filterBar) {
       if (point.censored) {
         const note = document.createElement('span')
         note.className = 'lifecycle-tooltip-note'
-        note.textContent = 'Runs past the selected years — these are minimums'
+        note.textContent = 'Runs past the selected years, so these are minimums'
         tooltip.append(note)
       }
       const cx = zx(point.jx)

@@ -140,26 +140,20 @@ code {
   width: 100%;
   max-width: 100%;
   margin: 0 auto;
-  min-height: 100svh;
+  height: 100svh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* Six panels no longer fit one screen, so the page scrolls - and the filters stay
-   pinned, because every panel reads them and scrolling away from them would mean
-   scrolling back for every change. */
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 24px;
-  padding: 24px 32px 20px;
+  gap: 20px;
+  padding: 12px 20px 10px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
   flex: 0 0 auto;
   box-sizing: border-box;
 }
@@ -424,20 +418,22 @@ code {
   width: 100%;
   max-width: none;
   margin: 0 auto;
-  padding: 24px 20px;
-  flex: none;
+  padding: 10px 12px;
+  flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-auto-rows: 420px;
-  gap: 24px 20px;
-  align-content: start;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-content: center;
   box-sizing: border-box;
 }
 
+/* The panels sit close together: the charts are what the screen is for, and every
+   pixel of gutter is a pixel the plots do not get. The border still separates them. */
 .content-slot {
   min-height: 0;
-  padding: 16px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 4px;
   box-sizing: border-box;
@@ -837,118 +833,19 @@ code {
 }
 
 /* The turnover chart and the diffusion timeline share an x-scale, so they are pinned
-   one above the other in the first column; see timeAxis.js. Everything else fills in
-   around that pair. The two wide panels take full rows: 23 years of crossings and a
-   cloud of 150-odd dots both read better with the horizontal room. */
+   one above the other in the first column; see timeAxis.js. */
 .turnover-panel { grid-column: 1; grid-row: 1; }
 .timeline-panel { grid-column: 1; grid-row: 2; }
 .sunburst-panel { grid-column: 2; grid-row: 1; }
-.lifecycle-panel { grid-column: 2; grid-row: 2; }
-.bump-panel { grid-column: 1 / 3; grid-row: 3; }
-.peak-panel { grid-column: 1 / 3; grid-row: 4; }
+.peak-panel { grid-column: 2; grid-row: 2; }
 
-.bump-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.bump-panel h2 {
-  color: var(--text-h);
-  font-size: 18px;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.bump-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.bump-heading {
-  min-width: 0;
-}
-
-.bump-view {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.bump-subtitle {
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.3;
-}
-
-.bump-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-
-.bump-chart svg {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.bump-empty {
-  display: grid;
-  height: 100%;
-  place-items: center;
-  color: var(--text);
-  font-size: 12px;
-}
-
-.bump-grid {
-  stroke: #f0eff2;
-}
-
-.bump-line {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.bump-node {
-  stroke: #fff;
-  stroke-width: 1.5px;
-}
-
-.bump-hit {
-  fill: transparent;
-  cursor: pointer;
-}
-
-/* In the across-countries view every line is already the selected name, so there is
-   nothing for a click to pick. */
-.bump-hit-static {
-  cursor: default;
-}
-
-.bump-rank,
-.bump-year {
-  fill: var(--text);
-  font-size: 10px;
-}
-
-.bump-label {
-  font-size: 11px;
-  font-weight: 600;
-}
-
+/* The chart is the panel's reason to exist, so the chrome around it is kept to the
+   minimum that still explains it: one line of subtitle, one line of legend, and a
+   tight gap between them. Everything left over goes to the plot. */
 .peak-panel {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
   overflow: hidden;
 }
@@ -1009,7 +906,13 @@ code {
 .peak-subtitle {
   color: var(--text);
   font-size: 12px;
-  line-height: 1.3;
+  line-height: 1.2;
+  /* Holds its line even when empty: without this the chart grows when nothing is
+     selected and shrinks again when something is, which reads as a jump. */
+  min-height: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .peak-chart {
@@ -1036,6 +939,13 @@ code {
 
 .peak-grid line {
   stroke: #f0eff2;
+}
+
+/* The rank lines sit under clusters of dots rather than behind a whole row, so they
+   are kept fainter still - present enough to anchor a clump, not enough to stripe. */
+.peak-grid-x,
+.peak-grid-year {
+  stroke: #f6f5f8;
 }
 
 .peak-axis {
@@ -1081,9 +991,11 @@ code {
 .peak-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  align-items: center;
+  gap: 2px 12px;
   color: var(--text);
   font-size: 10px;
+  line-height: 1.2;
 }
 
 .peak-legend span {
@@ -1115,25 +1027,14 @@ code {
   z-index: 2;
 }
 
+/* display:flex outranks the UA's [hidden] rule, so hiding needs saying twice */
+.peak-tooltip[hidden] {
+  display: none;
+}
+
 .peak-tooltip-note {
   color: var(--text);
   font-style: italic;
-}
-
-.bump-tooltip {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: var(--shadow);
-  font-size: 11px;
-  pointer-events: none;
-  white-space: nowrap;
-  z-index: 2;
 }
 
 .turnover-panel h2 {
@@ -1486,8 +1387,6 @@ code {
   .turnover-panel,
   .timeline-panel,
   .sunburst-panel,
-  .lifecycle-panel,
-  .bump-panel,
   .peak-panel {
     grid-column: auto;
     grid-row: auto;

@@ -11,14 +11,55 @@ import { jitter, namePoints } from './namePoints.js'
 const MUTED_COLOR = '#c9c7cd'
 const RANKS = 10
 
-// Density ramp for the honeycomb view: one hue, light to dark, in an orange no other
-// panel uses. This is a SEQUENTIAL scale, not an ordinal one, so the palest step is
-// allowed to recede toward the white surface - "one name here" should sit quietly
-// while the crowded cells carry the weight. The hairline stroke in the CSS is what
-// keeps those pale cells locatable.
-const DENSITY = ['#fbe3d5', '#f6bb9b', '#ef8c5d', '#d9612b', '#9c4019']
-const DENSITY_BANDS = [2, 3, 4, 6]
-const DENSITY_LABELS = ['1', '2', '3', '4–5', '6+']
+// Density ramp for the honeycomb view: the sunburst's purple, so the dashboard carries
+// one fewer hue and the country colours stay the only identity colours on screen.
+//
+// Four steps, not five. A single hue cannot hold five bands far enough apart to be read
+// off a small mark - the five-step version put its two palest steps at dE 10.5, under
+// the 15 floor and flagged as hard to tell apart even with full colour vision. Four
+// steps clear it at dE 18.5 normal and 17.6 under colourblindness, and the data has
+// only four groups worth naming anyway: 44 cells hold one name, 28 hold two, 11 hold
+// three or four, and 2 hold more.
+//
+// This is a SEQUENTIAL scale, not an ordinal one, so the palest step is allowed to
+// recede toward the white surface - "one name here" should sit quietly while the
+// crowded cells carry the weight. The hairline stroke in the CSS keeps it locatable.
+const DENSITY = ['#dcd5f0', '#a995dc', '#6b55b6', '#2e2270']
+const DENSITY_BANDS = [3, 7, 13]
+const DENSITY_LABELS = ['1–2', '3–6', '7–12', '13+']
+
+// Cells the selected name is not in go grey, the same way the names view mutes the
+// dots around a selection. A grey RAMP rather than one flat grey, matched step for
+// step in lightness, so the rest of the honeycomb still reports where the crowd is -
+// the point of picking a name out is seeing the field it sits in.
+const DENSITY_MUTED = ['#e4e3e6', '#bdbbc1', '#7b7880', '#3a383d']
+
+// The density view groups the longevity axis. 23 separate year-rows left each one
+// about 12px tall while the hexagons ran to 32px, so most of them hid behind their
+// neighbours - the view was drawing cells it could not show. Six bands give each row
+// roughly 33px, enough for the largest hexagon to sit clear, and collapse 85 occupied
+// cells into 41 fuller ones. The bands are narrow where the names are crowded and wide
+// where they thin out.
+// The axis stays in years - the same scale as the names view, so toggling between them
+// compares like with like - and a group simply sits at the middle of the years it
+// covers. The bands are chosen so those midpoints are far enough apart (27px at the
+// tightest) that the hexagons clear each other.
+const LONGEVITY_BANDS = [
+  { lo: 1, hi: 2, mid: 1.5, label: '1–2' },
+  { lo: 3, hi: 5, mid: 4, label: '3–5' },
+  { lo: 6, hi: 9, mid: 7.5, label: '6–9' },
+  { lo: 10, hi: 14, mid: 12, label: '10–14' },
+  { lo: 15, hi: Infinity, mid: 19, label: '15+' },
+]
+
+function bandOf(years) {
+  return LONGEVITY_BANDS.findIndex((band) => years >= band.lo && years <= band.hi)
+}
+
+// The largest hexagon a cell can carry, as a radius - held under half the tightest gap
+// between two band midpoints so neighbours never collide. The plot is inset by this
+// much in the density view so marks at the extremes are not sliced by the clip.
+const HEX_MAX = 13
 
 // Both axes are whole numbers, so every point lands on one of 10 x 23 lattice cells.
 // The honeycomb draws those cells directly: one hexagon per occupied cell, centred on
@@ -40,6 +81,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
   let rows = []
   let dataLoaded = false
   let selectedName = null
+  let tooltip = null
 
   function yearInterval() {
     const startYear = Number(startYearInput.value)
@@ -58,26 +100,28 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     chart.append(message)
   }
 
-  function renderLegend(bands) {
+  function renderLegend(density) {
     const legend = panel.querySelector('.peak-legend')
     legend.replaceChildren()
 
-    if (bands) {
+    const ridgeKey = () => {
+      const key = document.createElement('span')
+      const mark = document.createElement('i')
+      mark.className = 'peak-ridge-key'
+      key.append(mark, 'Median')
+      return key
+    }
+
+    if (density) {
       const scale = document.createElement('span')
       scale.className = 'peak-scale'
-      scale.append('Names in cell:')
+      scale.append('Names per cell:')
       DENSITY.forEach((fill, index) => {
         const swatch = document.createElement('i')
         swatch.style.background = fill
         scale.append(swatch, DENSITY_LABELS[index])
       })
-      scale.append(`· busiest cell holds ${bands.topShare} of the field`)
-      legend.append(scale)
-      const ridgeKey = document.createElement('span')
-      const ridgeMark = document.createElement('i')
-      ridgeMark.className = 'peak-ridge-key'
-      ridgeKey.append(ridgeMark, 'Median run at each peak')
-      legend.append(ridgeKey)
+      legend.append(scale, ridgeKey())
       return
     }
 
@@ -89,11 +133,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       item.append(swatch, country.name)
       legend.append(item)
     })
-    const ridgeKey = document.createElement('span')
-    const ridgeMark = document.createElement('i')
-    ridgeMark.className = 'peak-ridge-key'
-    ridgeKey.append(ridgeMark, 'Median run at each peak')
-    legend.append(ridgeKey)
+    legend.append(ridgeKey())
   }
 
   function render() {
@@ -109,14 +149,19 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     if (!points.length) return showMessage('No names match these filters')
 
     const density = view() === 'density'
-    const toppers = points.filter((point) => point.peakRank === 1).length
-    subtitle.textContent = density
-      ? `How high a name got against how long it lasted — ${points.length} names over ${new Set(points.map((point) => `${point.peakRank},${point.longevity}`)).size} occupied cells`
-      : selectedName
-        ? `How high a name got against how long it lasted — ${selectedName} marked in each country`
-        : `How high a name got against how long it lasted. ${toppers} of ${points.length} reached number one`
+    subtitle.textContent = selectedName ? `${selectedName}, marked in each country` : ''
 
-    const margin = { top: 10, right: 14, bottom: 34, left: 42 }
+    const margin = { top: 8, right: 12, bottom: 30, left: 34 }
+    // A dot is 3.5px and sits comfortably inside the plot, but a hexagon runs to 26px
+    // across and a cell at 23 years or at rank 1 sits hard against the edge, so half of
+    // it would fall outside the clip and be sliced off. The plot is inset by one
+    // hexagon to make room, which keeps the domain honest and the marks whole.
+    //
+    // The inset applies in BOTH views, not just the density one. Making it conditional
+    // gave the two views the same domain over a different range, so every tick shifted
+    // when the toggle was flipped and the chart appeared to jump.
+    const padX = HEX_MAX * Math.sqrt(3) / 2
+    const padY = HEX_MAX
     // The rank axis runs backwards - 10 at the left, 1 at the right - so that "higher
     // peak" and "longer run" both mean "further up and to the right". The relationship
     // is strong and positive, and this is the orientation that lets it read that way:
@@ -124,10 +169,10 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     // bottom-left, and the off-diagonal names are the ones worth looking at.
     const x = d3.scaleLinear()
       .domain([RANKS + 0.6, 0.4])
-      .range([margin.left, width - margin.right])
+      .range([margin.left + padX, width - margin.right - padX])
     const y = d3.scaleLinear()
       .domain([0.4, d3.max(points, (point) => point.longevity) + 0.6])
-      .range([height - margin.bottom, margin.top])
+      .range([height - margin.bottom - padY, margin.top + padY])
 
     const svg = d3.select(chart)
       .append('svg')
@@ -149,7 +194,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       .attr('x', (margin.left + width - margin.right) / 2)
       .attr('y', height - 4)
       .attr('text-anchor', 'middle')
-      .text('Peak position reached — best at the right')
+      .text('Peak position reached (best at the right)')
 
     svg.append('text')
       .attr('class', 'peak-axis-title')
@@ -161,10 +206,20 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     // Jittered positions are kept in DATA space, not pixels, so zooming can re-project
     // them without the offsets drifting. Both axes are small integers, so without this
     // the whole cloud would collapse onto ten columns.
+    //
+    // Both axes are nudged by about a quarter of a step and no more. A dot pushed a
+    // third of the way towards the next whole number stops reading as the value it
+    // actually holds - it looks like it peaked at 5 when it peaked at 6, or lasted 10
+    // years when it lasted 11. A quarter-step keeps every clump sitting visibly on its
+    // own gridline while still pulling overlapping names apart.
+    //
+    // The cost is that the crowded cells pack tighter: thirteen names share peak #10 at
+    // one year, and no amount of nudging separates those honestly. That is what the
+    // density view is for.
     const placed = points.map((point) => ({
       ...point,
-      jx: point.peakRank + jitter(point.name + point.country.code, 13) * 0.6,
-      jy: point.longevity + jitter(point.name + point.country.code, 101) * 0.55,
+      jx: point.peakRank + jitter(point.name + point.country.code, 13) * 0.26,
+      jy: point.longevity + jitter(point.name + point.country.code, 101) * 0.3,
     }))
     // The selected dot is drawn last so it is never buried under the cloud
     placed.sort((left, right) =>
@@ -193,20 +248,26 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
 
     // One entry per occupied lattice cell, carrying the names that share it.
     const cells = Array.from(
-      d3.group(points, (point) => `${point.peakRank},${point.longevity}`),
+      d3.group(points, (point) => `${point.peakRank},${bandOf(point.longevity)}`),
       ([key, group]) => ({
         peakRank: group[0].peakRank,
-        longevity: group[0].longevity,
+        row: bandOf(group[0].longevity),
+        band: LONGEVITY_BANDS[bandOf(group[0].longevity)],
         names: group,
         share: group.length / points.length,
       }))
+      .sort((left, right) => left.names.length - right.names.length)
     const maxCount = d3.max(cells, (cell) => cell.names.length) ?? 1
     // Fixed thresholds, not a scale stretched to the data. The counts are tiny and
     // lopsided - 44 cells hold one name, 28 hold two, and a single cell holds 13 - so
     // spreading five steps evenly across 1..13 would paint 93% of the honeycomb the
     // same palest shade. These bands put the steps where the cells actually are.
     // Holding them fixed also means a colour keeps its meaning when the filters change.
-    const fillFor = d3.scaleThreshold().domain(DENSITY_BANDS).range(DENSITY)
+    const stepFor = d3.scaleThreshold().domain(DENSITY_BANDS).range(d3.range(DENSITY.length))
+    const litCell = (cell) =>
+      !selectedName || cell.names.some((point) => point.name === selectedName)
+    const fillFor = (cell) =>
+      (litCell(cell) ? DENSITY : DENSITY_MUTED)[stepFor(cell.names.length)]
 
     const hexes = plot.append('g').selectAll('polygon')
       .data(density ? cells : [])
@@ -214,10 +275,11 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       .attr('class', (cell) =>
         cell.names.some((point) => point.name === selectedName)
           ? 'peak-hex peak-hex-selected' : 'peak-hex')
-      .attr('fill', (cell) => fillFor(cell.names.length))
+      .attr('fill', fillFor)
       .on('click', (_event, cell) => {
         if (cell.names.length === 1) selectName(cell.names[0].name)
       })
+    hexes.filter(litCell).raise()
 
     const dots = plot.append('g').selectAll('circle').data(density ? [] : placed).join('circle')
       .attr('class', 'peak-dot')
@@ -258,11 +320,32 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       const xTicks = zx.ticks(RANKS).filter(Number.isInteger).filter((tick) => tick >= 1)
       const yTicks = zy.ticks(5).filter(Number.isInteger)
 
-      gridGroup.selectAll('line').data(yTicks).join('line')
+      // A line per whole year, matching the rank lines: the labelled ticks every few
+      // years are too sparse for a clump to sit on. Kept at the faintest weight so 23
+      // of them read as a lattice rather than as stripes.
+      const yearLines = d3.range(Math.ceil(zy.domain()[0]), Math.floor(zy.domain()[1]) + 1)
+      gridGroup.selectAll('line.peak-grid-year').data(yearLines).join('line')
+        .attr('class', 'peak-grid-year')
         .attr('x1', margin.left)
         .attr('x2', width - margin.right)
         .attr('y1', (value) => zy(value))
         .attr('y2', (value) => zy(value))
+
+      gridGroup.selectAll('line.peak-grid-y').data(yTicks).join('line')
+        .attr('class', 'peak-grid-y')
+        .attr('x1', margin.left)
+        .attr('x2', width - margin.right)
+        .attr('y1', (value) => zy(value))
+        .attr('y2', (value) => zy(value))
+
+      // One per whole rank: the dots cluster around these, so the reader can see that
+      // a clump belongs to 6 rather than guessing from its centre of mass.
+      gridGroup.selectAll('line.peak-grid-x').data(xTicks).join('line')
+        .attr('class', 'peak-grid-x')
+        .attr('y1', margin.top)
+        .attr('y2', height - margin.bottom)
+        .attr('x1', (value) => zx(value))
+        .attr('x2', (value) => zx(value))
 
       xAxisGroup.call(d3.axisBottom(zx).tickValues(xTicks).tickFormat(d3.format('d')).tickSizeOuter(0))
       yAxisGroup.call(d3.axisLeft(zy).tickValues(yTicks).tickFormat(d3.format('d')).tickSizeOuter(0))
@@ -272,13 +355,21 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
         .y((step) => zy(step.longevity))
         .curve(d3.curveMonotoneX)(ridge))
 
-      // A pointy-top hexagon is sqrt(3)*r wide and 2r tall, so it is sized to whichever
-      // of the two cell dimensions is tighter and left a hair short of touching.
+      // Sizing a hexagon to fit its cell does not work here: the lattice is 10 wide and
+      // 23 tall, so a cell is roughly 67px across but only 9px high, and fitting both
+      // leaves a 4px speck that throws away all the horizontal room. The hexagons are
+      // given a floor instead and grow with the count, so the crowded cells - the ones
+      // the view exists to show - are the biggest things on screen. They overlap
+      // vertically, which is why the denser ones are drawn last.
       const cellWidth = Math.abs(zx(1) - zx(2))
-      const cellHeight = Math.abs(zy(1) - zy(2))
-      const radius = Math.min(cellWidth / Math.sqrt(3), cellHeight / 2) * 0.96
+      const radiusFor = (cell) => {
+        const share = maxCount > 1
+          ? Math.sqrt((cell.names.length - 1) / (maxCount - 1))
+          : 0
+        return Math.min(cellWidth / Math.sqrt(3), HEX_MAX, 6 + 7 * share)
+      }
       hexes.attr('points', (cell) =>
-        hexPoints(zx(cell.peakRank), zy(cell.longevity), radius))
+        hexPoints(zx(cell.peakRank), zy(cell.band.mid), radiusFor(cell)))
 
       dots.attr('cx', (point) => zx(point.jx)).attr('cy', (point) => zy(point.jy))
       labels.attr('x', (point) => zx(point.jx) + 9).attr('y', (point) => zy(point.jy))
@@ -301,7 +392,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     svg.on('dblclick', () => svg.transition().duration(220).call(zoom.transform, d3.zoomIdentity))
     draw()
 
-    const tooltip = document.createElement('div')
+    tooltip = document.createElement('div')
     tooltip.className = 'peak-tooltip'
     tooltip.hidden = true
     chart.append(tooltip)
@@ -310,8 +401,8 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       tooltip.hidden = false
       tooltip.replaceChildren()
       const heading = document.createElement('strong')
-      heading.textContent = `Peak #${cell.peakRank} · ${cell.longevity} ` +
-        `${cell.longevity === 1 ? 'year' : 'years'} in the top 10`
+      heading.textContent = `Peak #${cell.peakRank} · ${cell.band.label} ` +
+        `${cell.band.label === '1' ? 'year' : 'years'} in the top 10`
       const detail = document.createElement('span')
       detail.textContent = `${cell.names.length} ` +
         `${cell.names.length === 1 ? 'name' : 'names'} · ${(cell.share * 100).toFixed(1)}% of the field`
@@ -358,9 +449,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       tooltip.style.top = `${Math.max(4, cy - 10)}px`
     }).on('pointerleave', () => { tooltip.hidden = true })
 
-    renderLegend(density
-      ? { topShare: `${(maxCount / points.length * 100).toFixed(1)}%` }
-      : null)
+    renderLegend(density)
   }
 
   function selectName(name) {
@@ -372,6 +461,15 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     selectedName = event.detail.name
     render()
   })
+  // A mark only hears pointerleave if the pointer leaves IT. Sweep the cursor out of
+  // the panel quickly, or let a re-render swap the marks out mid-move, and that event
+  // never arrives - leaving the tooltip stranded on screen. The chart clears it on the
+  // way out regardless of which mark the pointer was over. Bound once, not per render,
+  // because replaceChildren() empties the chart but leaves its own listeners intact.
+  chart.addEventListener('pointerleave', () => {
+    if (tooltip) tooltip.hidden = true
+  })
+
   panel.querySelectorAll('input[name="peak-view"]')
     .forEach((input) => input.addEventListener('change', render))
   startYearInput.addEventListener('input', render)

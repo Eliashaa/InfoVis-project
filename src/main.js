@@ -1,8 +1,6 @@
 import { setupNameSunburst } from './sunburst.js'
 import { setupDiffusionTimeline } from './timeline.js'
 import { setupTurnoverChart } from './turnover.js'
-import { setupLifecycleScatter } from './lifecycle.js'
-import { setupRankBump } from './bump.js'
 import { setupPeakScatter } from './peak.js'
 
 document.querySelector('#app').innerHTML = `
@@ -87,29 +85,6 @@ document.querySelector('#app').innerHTML = `
       <span><i class="legend-bar legend-out"></i>Not in top 10</span>
     </div>
   </section>
-  <section class="content-slot lifecycle-panel" id="name-lifecycle" aria-label="Name lifecycle landscape">
-    <header>
-      <h2>Name lifecycle landscape</h2>
-      <p class="lifecycle-subtitle"></p>
-    </header>
-    <div class="lifecycle-chart"></div>
-    <div class="lifecycle-footnote"></div>
-  </section>
-  <section class="content-slot bump-panel" id="name-bump" aria-label="Rank trajectories">
-    <header class="bump-header">
-      <div class="bump-heading">
-        <h2>Rank trajectories</h2>
-        <p class="bump-subtitle"></p>
-      </div>
-      <fieldset class="bump-view" aria-label="Rank trajectories view">
-        <div class="choice-options">
-          <label><input type="radio" name="bump-view" value="list" checked><span>Top 10 over time</span></label>
-          <label><input type="radio" name="bump-view" value="countries"><span>Across countries</span></label>
-        </div>
-      </fieldset>
-    </header>
-    <div class="bump-chart"></div>
-  </section>
   <section class="content-slot peak-panel" id="name-peak" aria-label="Peak against longevity">
     <header class="peak-header">
       <div class="peak-heading">
@@ -142,18 +117,6 @@ setupDiffusionTimeline(
 
 setupTurnoverChart(
   document.querySelector('#name-turnover'),
-  document.querySelector('#name-sunburst'),
-  document.querySelector('#global-filters')
-)
-
-setupLifecycleScatter(
-  document.querySelector('#name-lifecycle'),
-  document.querySelector('#name-sunburst'),
-  document.querySelector('#global-filters')
-)
-
-setupRankBump(
-  document.querySelector('#name-bump'),
   document.querySelector('#name-sunburst'),
   document.querySelector('#global-filters')
 )
