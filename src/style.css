@@ -1,21 +1,56 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  /* The board is a name book lying open on a desk: warm paper, brown-black ink, and
+     the purple of the sunburst and logo as the book's cloth binding. The chart marks
+     that are drawn in JS read the same values from theme.js. */
+  --desk: #e7dec9;
+  --page: #fffcf5;
+  --page-shade: #f6f0e3;
+  --rule: #e2d6bf;
+  --rule-soft: #eee6d5;
+  --track: #dcd1bb;
+  --mark-muted: #cdc2ad;
+  --ink: #2b2118;
+  --text: #6c5f50;
+  --text-h: var(--ink);
+  --text-faint: #8a7d6a;
+  --bg: var(--desk);
+  --border: var(--rule);
+  --accent: #3b2d87;
+  --accent-tint: #ece8f7;
+  --accent-ink: #2e2370;
+  /* Brown leather binding */
+  --cover: #6b4423;
+  --cover-shade: #4a2d16;
+
+  /* Gender and country identity colours, shared with genders.js and countries.js.
+     Each has a pale tint for selected backgrounds and a deep ink for text on it. */
+  --female: #c8327c;
+  --female-tint: #fce6f1;
+  --female-ink: #9b1d5c;
+  --male: #2858b8;
+  --male-tint: #e3ecfb;
+  --male-ink: #1d4593;
+  --sweden: #2a78d6;
+  --sweden-tint: #e2eefb;
+  --sweden-ink: #1a569f;
+  --norway: #e34948;
+  --norway-tint: #fde8e8;
+  --norway-ink: #a62a29;
+  --denmark: #1baf7a;
+  --denmark-tint: #dff5ec;
+  --denmark-ink: #0d6e4b;
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
+  /* Book faces that ship with the operating system, so the board still works offline:
+     Palatino on Windows, Iowan Old Style and Palatino on macOS, Georgia as a fallback */
+  --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: var(--serif);
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 18px/145% var(--serif);
+  font-variant-numeric: lining-nums;
   letter-spacing: 0.18px;
   color-scheme: light;
   color: var(--text);
@@ -32,6 +67,9 @@
 
 body {
   margin: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, #f1eadb 0%, transparent 70%),
+    var(--desk);
 }
 
 h1,
@@ -79,16 +117,18 @@ p {
   align-items: center;
   justify-content: flex-start;
   gap: 20px;
-  padding: 12px 20px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 12px 24px 6px;
   flex: 0 0 auto;
   box-sizing: border-box;
 }
 
+/* Wraps onto a second row on laptop widths rather than squeezing the year slider to
+   nothing: the name field needs room for three chips */
 .topbar-filters {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: 18px;
+  gap: 10px 14px;
   flex: 1;
   min-width: 0;
 }
@@ -102,7 +142,14 @@ p {
 
 .name-control {
   position: relative;
-  flex: 0 1 190px;
+  flex: 1 1 260px;
+  min-width: 275px;
+  max-width: 360px;
+}
+
+.filter-hint {
+  color: var(--text-faint);
+  font-size: 10px;
 }
 
 .filter-label,
@@ -112,22 +159,149 @@ p {
   line-height: 1.2;
 }
 
-.name-control input {
-  width: 100%;
-  height: 34px;
-  padding: 6px 9px;
+/* The picked names sit as chips inside the search box, ahead of the cursor, so the
+   field reads as one control: what is selected, then where to type the next one */
+.name-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 3px 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
+  background: var(--page);
+  box-sizing: border-box;
+  cursor: text;
+}
+
+.name-field:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.name-chips {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.name-chips[hidden] {
+  display: none;
+}
+
+.name-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-width: 0;
+  height: 24px;
+  padding: 0 1px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--page-shade);
+  color: var(--text-h);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.name-chip.is-female {
+  border-color: var(--female);
+  background: var(--female-tint);
+  color: var(--female-ink);
+}
+
+.name-chip.is-male {
+  border-color: var(--male);
+  background: var(--male-tint);
+  color: var(--male-ink);
+}
+
+.name-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.name-chip-remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.name-chip-remove:hover {
+  background: rgba(43, 33, 24, 0.1);
+}
+
+.name-chip-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.name-field input {
+  flex: 1 1 70px;
+  min-width: 70px;
+  height: 26px;
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
   color: var(--text-h);
   font: inherit;
   font-size: 13px;
   box-sizing: border-box;
 }
 
-.name-control input:focus-visible,
+.name-field input:focus {
+  outline: none;
+}
+
+/* With three names picked the chips need the room; typing still highlights in the
+   sunburst, so the input stays, just narrow */
+.name-field.is-full input {
+  flex-basis: 24px;
+  min-width: 24px;
+}
+
+.name-limit {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 21;
+  padding: 6px 9px;
+  border: 1px solid #e8c9a8;
+  border-radius: 4px;
+  background: #fff6ec;
+  color: #783d1d;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(43, 33, 24, 0.12);
+}
+
+.name-limit[hidden] {
+  display: none;
+}
+
 .year-range-track input:focus-visible + span {
-  outline: 2px solid #187b70;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -142,8 +316,8 @@ p {
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 8px 20px rgba(8, 6, 13, 0.14);
+  background: var(--page);
+  box-shadow: 0 8px 20px rgba(43, 33, 24, 0.14);
 }
 
 .name-suggestions[hidden] {
@@ -156,7 +330,7 @@ p {
   padding: 7px 8px;
   border: 0;
   border-radius: 3px;
-  background: #fff;
+  background: var(--page);
   color: var(--text-h);
   font: inherit;
   font-size: 12px;
@@ -167,12 +341,18 @@ p {
 
 .name-suggestion:hover,
 .name-suggestion[aria-selected='true'] {
-  background: #e5f3f0;
-  color: #145d55;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
 }
 
+/* Suggestions are written in the colour the name will take as a chip */
+.name-suggestion.is-female { color: var(--female-ink); }
+.name-suggestion.is-male { color: var(--male-ink); }
+
 .year-control {
-  flex: 0 1 245px;
+  flex: 1 1 200px;
+  min-width: 190px;
+  max-width: 245px;
 }
 
 .filter-label-row {
@@ -197,6 +377,8 @@ p {
 }
 
 .year-range-track::before,
+/* The year range is neither gender nor country, so it takes the neutral leather
+   brown of the book's binding */
 .year-range-track::after {
   position: absolute;
   top: 50%;
@@ -210,13 +392,13 @@ p {
 .year-range-track::before {
   right: 0;
   left: 0;
-  background: #e0e5e4;
+  background: var(--rule);
 }
 
 .year-range-track::after {
   right: calc(100% - var(--range-end));
   left: var(--range-start);
-  background: #187b70;
+  background: var(--cover);
 }
 
 .year-range-track input {
@@ -251,10 +433,10 @@ p {
   height: 16px;
   margin-top: -6px;
   appearance: none;
-  border: 2px solid #fff;
+  border: 2px solid var(--page);
   border-radius: 50%;
-  background: #187b70;
-  box-shadow: 0 0 0 1px #187b70;
+  background: var(--cover);
+  box-shadow: 0 0 0 1px var(--cover);
   pointer-events: auto;
 }
 
@@ -262,10 +444,10 @@ p {
   cursor: pointer;
   width: 12px;
   height: 12px;
-  border: 2px solid #fff;
+  border: 2px solid var(--page);
   border-radius: 50%;
-  background: #187b70;
-  box-shadow: 0 0 0 1px #187b70;
+  background: var(--cover);
+  box-shadow: 0 0 0 1px var(--cover);
   pointer-events: auto;
 }
 
@@ -288,7 +470,7 @@ p {
   padding: 2px;
   border: 1px solid var(--border);
   border-radius: 5px;
-  background: #fff;
+  background: var(--page);
 }
 
 .choice-options label {
@@ -305,7 +487,7 @@ p {
 
 .choice-options span {
   display: block;
-  padding: 5px 9px;
+  padding: 5px 8px;
   border-radius: 3px;
   color: var(--text);
   font-size: 12px;
@@ -314,59 +496,212 @@ p {
 }
 
 .choice-options input:checked + span {
-  background: #e5f3f0;
-  color: #145d55;
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+
+/* Gender and country options take their identity colour when selected */
+.choice-options input[value='female'] + span { --swatch: var(--female); --tint: var(--female-tint); --ink: var(--female-ink); }
+.choice-options input[value='male'] + span { --swatch: var(--male); --tint: var(--male-tint); --ink: var(--male-ink); }
+.choice-options input[value='Sweden'] + span { --swatch: var(--sweden); --tint: var(--sweden-tint); --ink: var(--sweden-ink); }
+.choice-options input[value='Norway'] + span { --swatch: var(--norway); --tint: var(--norway-tint); --ink: var(--norway-ink); }
+.choice-options input[value='Denmark'] + span { --swatch: var(--denmark); --tint: var(--denmark-tint); --ink: var(--denmark-ink); }
+
+.choice-options input:is([value='female'], [value='male'], [value='Sweden'], [value='Norway'], [value='Denmark']):checked + span {
+  background: var(--tint);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--swatch);
 }
 
 .choice-options input:focus-visible + span {
-  outline: 2px solid #187b70;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.topbar-title {
-  flex: 0 0 auto;
-  max-width: 310px;
-  text-align: left;
+/* The logo carries the title: a baby face, the wordmark, and the three flags so it
+   is clear at a glance which countries the names come from */
+.brand {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
 }
 
-.topbar-title h1 {
-  margin: 0 0 4px;
+.brand-mark {
+  display: block;
+  width: 64px;
+  height: auto;
+  flex: none;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.topbar .brand-name {
+  margin: 0;
   color: var(--text-h);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.15;
-  letter-spacing: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
 }
 
-.topbar-title p {
+/* The 10 is the figure the whole dataset is cut at, so it is set like one: in the
+   binding colour, with lining figures */
+.brand-ten {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: lining-nums;
+}
+
+.brand-flags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.brand-flags svg {
+  display: block;
+  width: 19px;
+  height: 14px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(43, 33, 24, 0.08);
+}
+
+.brand-years {
+  margin-left: 3px;
   color: var(--text);
-  font-size: 10px;
-  line-height: 1.3;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* The four panels are the two pages of an open book. The left page holds the two
+   time charts, which share an x-axis, the right page the two name views. The spine
+   is a soft shadow down the centre gutter, the page block a few offset edges at the
+   sides, and the purple cover just shows beneath them. */
 .content-slots {
-  width: 100%;
+  position: relative;
+  width: auto;
   max-width: none;
-  margin: 0 auto;
-  padding: 10px 12px;
+  margin: 18px 34px 26px;
+  padding: 14px 22px 22px;
   flex: 1;
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px 60px;
   align-content: center;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background:
+    /* the crease where the two pages meet the binding */
+    linear-gradient(90deg,
+      transparent calc(50% - 1px),
+      rgba(95, 65, 25, 0.28) 50%,
+      transparent calc(50% + 1px)),
+    /* each page curves down into the spine and lifts slightly at its outer edge */
+    linear-gradient(90deg,
+      rgba(95, 65, 25, 0.07) 0,
+      transparent 3%,
+      transparent calc(50% - 70px),
+      rgba(95, 65, 25, 0.05) calc(50% - 30px),
+      rgba(95, 65, 25, 0.22) 50%,
+      rgba(95, 65, 25, 0.05) calc(50% + 30px),
+      transparent calc(50% + 70px),
+      transparent 97%,
+      rgba(95, 65, 25, 0.07) 100%),
+    /* paper grain */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.37 0 0 0 0 0.26 0 0 0 0 0.1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)'/%3E%3C/svg%3E"),
+    var(--page);
+  /* The page block shows as a few offset edges at the sides and foot, and the hard
+     cover in the binding colour shows all the way round beneath it */
+  box-shadow:
+    -3px 2px 0 -1px var(--page), -3px 2px 0 0 var(--rule),
+    -6px 4px 0 -1px var(--page), -6px 4px 0 0 var(--rule),
+    3px 2px 0 -1px var(--page), 3px 2px 0 0 var(--rule),
+    6px 4px 0 -1px var(--page), 6px 4px 0 0 var(--rule),
+    0 0 0 12px var(--cover),
+    0 3px 0 12px var(--cover-shade),
+    0 22px 34px -6px rgba(50, 32, 8, 0.45);
+}
+
+/* The ribbon bookmark, hanging from the head of the spine down the gutter, so it
+   never sits over a chart */
+.content-slots::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: calc(50% + 9px);
+  width: 13px;
+  height: 118px;
+  background: linear-gradient(90deg, #a87b22, #d4a63c 45%, #b8892b);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 88%, 0 100%);
+  box-shadow: 0 2px 3px rgba(50, 32, 8, 0.3);
+  pointer-events: none;
+}
+
+/* Page numbers, set like a printed book: centred at the foot of each page */
+.book-folio {
+  position: absolute;
+  bottom: 7px;
+  width: calc(50% - 52px);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.book-left {
+  left: 22px;
+}
+
+.book-right {
+  right: 22px;
+}
+
+/* No boxes on a page: a panel is a section, set off from the one below by a rule */
+.content-slot {
+  min-height: 0;
+  padding: 8px 4px;
+  border: 0;
   box-sizing: border-box;
 }
 
-/* The panels sit close together: the charts are what the screen is for, and every
-   pixel of gutter is a pixel the plots do not get. The border still separates them. */
-.content-slot {
-  min-height: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  box-sizing: border-box;
+.timeline-panel,
+.peak-panel {
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.content-slot h2 {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* Subtitles read as the line of italic under a chapter heading */
+.turnover-subtitle,
+.timeline-subtitle,
+.sunburst-subtitle,
+.peak-subtitle {
+  font-style: italic;
+}
+
+/* Each section opens like a chapter: a roman numeral in the binding colour. Left
+   page first, then right, the order the book is read in. */
+.chapter {
+  margin-right: 8px;
+  color: var(--accent);
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .sunburst-panel {
@@ -400,24 +735,50 @@ p {
 .filter-reset,
 .sunburst-name-list button {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--page);
   color: var(--text-h);
   font: inherit;
   cursor: pointer;
 }
 
+/* Gender, Country and Reset stay together on one row: if the filter bar has to wrap,
+   they move down as a group instead of leaving Reset stranded on its own line */
+.filter-group {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+/* The same height as the option buttons beside it, so the row lines up */
 .filter-reset {
   flex: 0 0 auto;
-  padding: 7px 11px;
-  border-radius: 4px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 5px;
   font-size: 12px;
 }
 
 .filter-reset:hover,
 .sunburst-name-list button:hover,
 .sunburst-name-list button[aria-pressed='true'] {
-  border-color: #187b70;
-  background: #e5f3f0;
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+
+/* Picked names take their gender colour, the same as their chips in the search box */
+.sunburst-name-list button.is-female[aria-pressed='true'] {
+  border-color: var(--female);
+  background: var(--female-tint);
+  color: var(--female-ink);
+  font-weight: 600;
+}
+
+.sunburst-name-list button.is-male[aria-pressed='true'] {
+  border-color: var(--male);
+  background: var(--male-tint);
+  color: var(--male-ink);
+  font-weight: 600;
 }
 
 .sunburst-name-list button.search-match:not([aria-pressed='true']) {
@@ -470,7 +831,7 @@ p {
 .sunburst-center-hit:focus-visible,
 .sunburst-name-list button:focus-visible,
 .filter-reset:focus-visible {
-  outline: 2px solid #187b70;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -496,7 +857,7 @@ p {
 }
 
 .sunburst-center-hit {
-  fill: #08060d;
+  fill: var(--ink);
   fill-opacity: 0;
   pointer-events: all;
   transition: fill-opacity 140ms ease;
@@ -607,17 +968,37 @@ p {
   min-height: 0;
 }
 
+/* Set like the index at the back of a name book: left-aligned entries on ruled
+   lines rather than a grid of boxes. A picked name is marked like a highlighter. */
+.sunburst-name-list {
+  column-gap: 14px;
+  row-gap: 0;
+}
+
 .sunburst-name-list button {
   height: 24px;
   min-width: 0;
   overflow: hidden;
-  padding: 4px 5px;
-  border-radius: 3px;
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--rule-soft);
+  border-radius: 0;
+  background: transparent;
   box-sizing: border-box;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.2;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sunburst-name-list button:hover {
+  background: var(--page-shade);
+}
+
+.sunburst-name-list button[aria-pressed='true'],
+.sunburst-name-list button.search-match {
+  border-radius: 3px;
 }
 
 .lifecycle-panel {
@@ -672,7 +1053,7 @@ p {
 }
 
 .lifecycle-grid line {
-  stroke: #e5e4e7;
+  stroke: var(--rule-soft);
 }
 
 .lifecycle-axis text {
@@ -682,7 +1063,7 @@ p {
 
 .lifecycle-axis path,
 .lifecycle-axis line {
-  stroke: #c9c7cd;
+  stroke: var(--mark-muted);
 }
 
 .lifecycle-axis-title {
@@ -697,7 +1078,7 @@ p {
 }
 
 .lifecycle-dot:focus-visible {
-  outline: 2px solid #187b70;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -736,8 +1117,8 @@ p {
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
-  box-shadow: rgba(0, 0, 0, 0.12) 0 2px 8px;
+  background: var(--page);
+  box-shadow: rgba(60, 40, 10, 0.16) 0 2px 8px;
   color: var(--text-h);
   font-size: 11px;
   line-height: 1.35;
@@ -814,13 +1195,13 @@ p {
    allowed to recede toward the surface, which would otherwise lose the single-name
    cells entirely. */
 .peak-hex {
-  stroke: #e5e4e7;
+  stroke: var(--rule-soft);
   stroke-width: 0.75px;
   cursor: pointer;
 }
 
 .peak-hex-selected {
-  stroke: #08060d;
+  stroke: var(--ink);
   stroke-width: 2px;
 }
 
@@ -834,7 +1215,7 @@ p {
   width: 13px;
   height: 9px;
   margin-left: 4px;
-  border: 1px solid #e5e4e7;
+  border: 1px solid var(--rule-soft);
   flex: none;
 }
 
@@ -873,14 +1254,14 @@ p {
 }
 
 .peak-grid line {
-  stroke: #f0eff2;
+  stroke: var(--rule-soft);
 }
 
 /* The rank lines sit under clusters of dots rather than behind a whole row, so they
    are kept fainter still - present enough to anchor a clump, not enough to stripe. */
 .peak-grid-x,
 .peak-grid-year {
-  stroke: #f6f5f8;
+  stroke: var(--rule-soft);
 }
 
 .peak-axis {
@@ -890,7 +1271,7 @@ p {
 
 .peak-axis path,
 .peak-axis line {
-  stroke: #e5e4e7;
+  stroke: var(--rule-soft);
 }
 
 .peak-axis-title {
@@ -906,21 +1287,6 @@ p {
   font-size: 10px;
   font-weight: 600;
   pointer-events: none;
-}
-
-.peak-ridge {
-  fill: none;
-  stroke: #b9b5c0;
-  stroke-width: 1.5px;
-  stroke-dasharray: 5 4;
-  pointer-events: none;
-}
-
-.peak-ridge-key {
-  width: 14px;
-  height: 0;
-  border-top: 1.5px dashed #b9b5c0;
-  flex: none;
 }
 
 .peak-legend {
@@ -950,13 +1316,14 @@ p {
   position: absolute;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
+  gap: 1px;
+  padding: 3px 6px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
+  background: var(--page);
   box-shadow: var(--shadow);
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1.3;
   pointer-events: none;
   white-space: nowrap;
   z-index: 2;
@@ -1008,7 +1375,7 @@ p {
 }
 
 .turnover-grid line {
-  stroke: #e5e4e7;
+  stroke: var(--rule-soft);
 }
 
 .turnover-axis text {
@@ -1018,7 +1385,7 @@ p {
 
 .turnover-axis path,
 .turnover-axis line {
-  stroke: #c9c7cd;
+  stroke: var(--mark-muted);
 }
 
 .turnover-axis-title {
@@ -1040,14 +1407,14 @@ p {
 }
 
 .turnover-crosshair {
-  stroke: #08060d;
+  stroke: var(--ink);
   stroke-width: 1px;
   stroke-dasharray: 3 3;
   opacity: 0.45;
 }
 
 .turnover-dot {
-  stroke: #fff;
+  stroke: var(--page);
   stroke-width: 2px;
 }
 
@@ -1065,8 +1432,8 @@ p {
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: #fff;
-  box-shadow: rgba(0, 0, 0, 0.12) 0 2px 8px;
+  background: var(--page);
+  box-shadow: rgba(60, 40, 10, 0.16) 0 2px 8px;
   color: var(--text-h);
   font-size: 11px;
   line-height: 1.35;
@@ -1092,14 +1459,21 @@ p {
 }
 
 .turnover-key-in {
-  border-radius: 50%;
-  background: #08060d;
+  background: var(--ink);
 }
 
 .turnover-key-out {
+  background: var(--page);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+/* Matches the marker shape each name gets on the chart */
+.turnover-swatch.turnover-key-circle {
   border-radius: 50%;
-  background: #fff;
-  box-shadow: inset 0 0 0 2px #08060d;
+}
+
+.turnover-swatch.turnover-key-square {
+  border-radius: 1px;
 }
 
 .turnover-legend {
@@ -1168,7 +1542,7 @@ p {
 }
 
 .timeline-grid line {
-  stroke: #e5e4e7;
+  stroke: var(--rule-soft);
 }
 
 .timeline-axis text {
@@ -1178,7 +1552,7 @@ p {
 
 .timeline-axis path,
 .timeline-axis line {
-  stroke: #c9c7cd;
+  stroke: var(--mark-muted);
 }
 
 .timeline-country {
@@ -1191,24 +1565,26 @@ p {
 /* The empty rail is neutral, never a tint of the country colour: a lighter shade of
    the same hue reads as "the line continues", not as "the name is absent here" */
 .timeline-track {
-  fill: #d4d3d7;
+  fill: var(--track);
+}
+
+.timeline-group {
+  fill: var(--page-shade);
+}
+
+.timeline-name {
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .timeline-marker {
-  stroke: #fff;
+  stroke: var(--page);
   stroke-width: 2px;
 }
 
 .timeline-peak-label {
   font-size: 11px;
   font-weight: 700;
-  text-anchor: middle;
-}
-
-.timeline-absent {
-  fill: var(--text);
-  font-size: 11px;
-  font-style: italic;
   text-anchor: middle;
 }
 
@@ -1247,7 +1623,7 @@ p {
 .legend-bar.legend-out {
   height: 3px;
   border-radius: 1.5px;
-  background: #d4d3d7;
+  background: var(--track);
 }
 
 @media (max-width: 900px) {
@@ -1258,7 +1634,7 @@ p {
     padding: 22px 24px 18px;
   }
 
-  .topbar-title {
+  .brand {
     align-self: flex-start;
   }
 
@@ -1309,12 +1685,32 @@ p {
     flex: 1;
   }
 
+  .filter-group {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+  }
+
+  /* One column is one long page: no spine down the middle, and every section after
+     the first is ruled off from the one above */
+  .content-slots::after,
+  .book-folio {
+    display: none;
+  }
+
   .content-slots {
     flex: none;
     min-height: 0;
+    margin: 14px 16px 26px;
+    padding: 12px 16px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
     grid-auto-rows: 380px;
+    gap: 6px;
+    background: var(--page);
+  }
+
+  .sunburst-panel {
+    border-top: 1px solid var(--rule);
   }
 
   /* One column, so the pinned placement above has to be released or the panels

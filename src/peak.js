@@ -2,14 +2,17 @@ import d3 from './d3.js'
 import { visibleCountries } from './countries.js'
 import { BABYNAMES_CSV } from './paths.js'
 import { jitter, namePoints } from './namePoints.js'
+import { MUTED } from './theme.js'
 
 // The lifecycle scatter asks how FAST a name climbed; this one asks how HIGH it got,
 // against the same longevity axis. That turns the cloud into four readable corners:
 // top left is the name that reached number one and stayed for years, bottom right the
 // one that scraped rank 10 for a season and vanished. Same derivation as the lifecycle
 // panel - see namePoints.js - so the two can never disagree about a name.
-const MUTED_COLOR = '#c9c7cd'
+const MUTED_COLOR = MUTED
 const RANKS = 10
+// Line height of the selected-dot labels, used to stack labels that would collide
+const LABEL_LINE = 11
 
 // Density ramp for the honeycomb view: the sunburst's purple, so the dashboard carries
 // one fewer hue and the country colours stay the only identity colours on screen.
@@ -32,7 +35,7 @@ const DENSITY_LABELS = ['1–2', '3–6', '7–12', '13+']
 // dots around a selection. A grey RAMP rather than one flat grey, matched step for
 // step in lightness, so the rest of the honeycomb still reports where the crowd is -
 // the point of picking a name out is seeing the field it sits in.
-const DENSITY_MUTED = ['#e4e3e6', '#bdbbc1', '#7b7880', '#3a383d']
+const DENSITY_MUTED = ['#e9e2d4', '#c3b9a7', '#857a69', '#3f372d']
 
 // The density view groups the longevity axis. 23 separate year-rows left each one
 // about 12px tall while the hexagons ran to 32px, so most of them hid behind their
@@ -73,6 +76,8 @@ function hexPoints(cx, cy, radius) {
   }).join(' ')
 }
 
+const listFormat = new Intl.ListFormat('en', { type: 'conjunction' })
+
 export function setupPeakScatter(panel, sunburstPanel, filterBar) {
   const chart = panel.querySelector('.peak-chart')
   const subtitle = panel.querySelector('.peak-subtitle')
@@ -80,7 +85,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
   const endYearInput = filterBar.querySelector('#year-end')
   let rows = []
   let dataLoaded = false
-  let selectedName = null
+  let selectedNames = new Set()
   let tooltip = null
 
   function yearInterval() {
@@ -104,14 +109,6 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     const legend = panel.querySelector('.peak-legend')
     legend.replaceChildren()
 
-    const ridgeKey = () => {
-      const key = document.createElement('span')
-      const mark = document.createElement('i')
-      mark.className = 'peak-ridge-key'
-      key.append(mark, 'Median')
-      return key
-    }
-
     if (density) {
       const scale = document.createElement('span')
       scale.className = 'peak-scale'
@@ -121,7 +118,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
         swatch.style.background = fill
         scale.append(swatch, DENSITY_LABELS[index])
       })
-      legend.append(scale, ridgeKey())
+      legend.append(scale)
       return
     }
 
@@ -133,7 +130,6 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       item.append(swatch, country.name)
       legend.append(item)
     })
-    legend.append(ridgeKey())
   }
 
   function render() {
@@ -149,7 +145,9 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     if (!points.length) return showMessage('No names match these filters')
 
     const density = view() === 'density'
-    subtitle.textContent = selectedName ? `${selectedName}, marked in each country` : ''
+    subtitle.textContent = selectedNames.size
+      ? `${listFormat.format([...selectedNames])}, marked in each country`
+      : ''
 
     const margin = { top: 8, right: 12, bottom: 30, left: 34 }
     // A dot is 3.5px and sits comfortably inside the plot, but a hexagon runs to 26px
@@ -202,7 +200,8 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       .attr('text-anchor', 'middle')
       .text('Years in top 10')
 
-    const muted = (point) => Boolean(selectedName) && point.name !== selectedName
+    const isSelected = (point) => selectedNames.has(point.name)
+    const muted = (point) => selectedNames.size > 0 && !isSelected(point)
     // Jittered positions are kept in DATA space, not pixels, so zooming can re-project
     // them without the offsets drifting. Both axes are small integers, so without this
     // the whole cloud would collapse onto ten columns.
@@ -221,9 +220,8 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       jx: point.peakRank + jitter(point.name + point.country.code, 13) * 0.26,
       jy: point.longevity + jitter(point.name + point.country.code, 101) * 0.3,
     }))
-    // The selected dot is drawn last so it is never buried under the cloud
-    placed.sort((left, right) =>
-      Number(left.name === selectedName) - Number(right.name === selectedName))
+    // The selected dots are drawn last so they are never buried under the cloud
+    placed.sort((left, right) => Number(isSelected(left)) - Number(isSelected(right)))
 
     const clipId = 'peak-clip'
     svg.append('clipPath').attr('id', clipId).append('rect')
@@ -233,18 +231,6 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       .attr('height', Math.max(0, height - margin.top - margin.bottom))
 
     const plot = svg.append('g').attr('clip-path', `url(#${clipId})`)
-
-    // The median run at each peak position. Without it the reader has to infer the
-    // trend before they can see a departure from it, and the departures are the point:
-    // the names well above this line lasted years without ever getting near the top,
-    // the ones below it were brief at the summit.
-    const ridge = Array.from(
-      d3.rollup(points, (group) => d3.median(group, (point) => point.longevity),
-        (point) => point.peakRank),
-      ([peakRank, longevity]) => ({ peakRank, longevity }))
-      .sort((left, right) => left.peakRank - right.peakRank)
-
-    const ridgePath = plot.append('path').attr('class', 'peak-ridge')
 
     // One entry per occupied lattice cell, carrying the names that share it.
     const cells = Array.from(
@@ -264,8 +250,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     // same palest shade. These bands put the steps where the cells actually are.
     // Holding them fixed also means a colour keeps its meaning when the filters change.
     const stepFor = d3.scaleThreshold().domain(DENSITY_BANDS).range(d3.range(DENSITY.length))
-    const litCell = (cell) =>
-      !selectedName || cell.names.some((point) => point.name === selectedName)
+    const litCell = (cell) => !selectedNames.size || cell.names.some(isSelected)
     const fillFor = (cell) =>
       (litCell(cell) ? DENSITY : DENSITY_MUTED)[stepFor(cell.names.length)]
 
@@ -273,8 +258,7 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       .data(density ? cells : [])
       .join('polygon')
       .attr('class', (cell) =>
-        cell.names.some((point) => point.name === selectedName)
-          ? 'peak-hex peak-hex-selected' : 'peak-hex')
+        cell.names.some(isSelected) ? 'peak-hex peak-hex-selected' : 'peak-hex')
       .attr('fill', fillFor)
       .on('click', (_event, cell) => {
         if (cell.names.length === 1) selectName(cell.names[0].name)
@@ -283,13 +267,13 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
 
     const dots = plot.append('g').selectAll('circle').data(density ? [] : placed).join('circle')
       .attr('class', 'peak-dot')
-      .attr('r', (point) => point.name === selectedName ? 6 : 3.5)
+      .attr('r', (point) => isSelected(point) ? 6 : 3.5)
       .attr('fill', (point) => muted(point) ? MUTED_COLOR : point.country.color)
       .attr('stroke', (point) => muted(point) ? MUTED_COLOR : point.country.color)
-      .attr('stroke-width', (point) => point.name === selectedName ? 2 : 1.5)
+      .attr('stroke-width', (point) => isSelected(point) ? 2 : 1.5)
       .attr('opacity', (point) => {
         if (muted(point)) return 0.45
-        return point.name === selectedName ? 1 : 0.8
+        return isSelected(point) ? 1 : 0.8
       })
       .attr('tabindex', 0)
       .attr('role', 'button')
@@ -304,13 +288,17 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
         }
       })
 
+    // One name needs only the country code beside each dot; with several, the label
+    // has to say whose dot it is as well
     const labels = plot.append('g').selectAll('text')
-      .data(density ? [] : placed.filter((point) => point.name === selectedName))
+      .data(density ? [] : placed.filter(isSelected))
       .join('text')
       .attr('class', 'peak-label')
       .attr('dy', '0.35em')
       .attr('fill', (point) => point.country.color)
-      .text((point) => point.country.code)
+      .text((point) => selectedNames.size > 1
+        ? `${point.name} ${point.country.code}`
+        : point.country.code)
 
     // --- zoom: the clusters are what this chart is for, so they have to be openable
     let zx = x
@@ -350,11 +338,6 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       xAxisGroup.call(d3.axisBottom(zx).tickValues(xTicks).tickFormat(d3.format('d')).tickSizeOuter(0))
       yAxisGroup.call(d3.axisLeft(zy).tickValues(yTicks).tickFormat(d3.format('d')).tickSizeOuter(0))
 
-      ridgePath.attr('d', d3.line()
-        .x((step) => zx(step.peakRank))
-        .y((step) => zy(step.longevity))
-        .curve(d3.curveMonotoneX)(ridge))
-
       // Sizing a hexagon to fit its cell does not work here: the lattice is 10 wide and
       // 23 tall, so a cell is roughly 67px across but only 9px high, and fitting both
       // leaves a 4px speck that throws away all the horizontal room. The hexagons are
@@ -372,7 +355,32 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
         hexPoints(zx(cell.peakRank), zy(cell.band.mid), radiusFor(cell)))
 
       dots.attr('cx', (point) => zx(point.jx)).attr('cy', (point) => zy(point.jy))
-      labels.attr('x', (point) => zx(point.jx) + 9).attr('y', (point) => zy(point.jy))
+      // A label near the right edge would run out of the plot, so it flips to the left.
+      // Two selected dots can share a cell - Emma peaked at #1 for 23 years in both
+      // Norway and Denmark - so a label that would land on one already placed steps
+      // down a line instead of printing over it.
+      const taken = []
+      labels.each(function placeLabel(point) {
+        const flip = zx(point.jx) > width - margin.right - 70
+        const x = zx(point.jx) + (flip ? -9 : 9)
+        // Measured when laid out; estimated if the chart is still being sized
+        const textWidth = this.getComputedTextLength() || this.textContent.length * 6
+        const [left, right] = flip ? [x - textWidth, x] : [x, x + textWidth]
+        let y = zy(point.jy)
+        for (let step = 0; step < 6; step += 1) {
+          // Half a pixel of slack, or a label stepped exactly one line down still
+          // reads as clashing through floating-point noise and never moves on
+          const clash = taken.find((box) =>
+            Math.abs(box.y - y) < LABEL_LINE - 0.5 && left < box.right && right > box.left)
+          if (!clash) break
+          y = clash.y + LABEL_LINE
+        }
+        taken.push({ left, right, y })
+        d3.select(this)
+          .attr('x', x)
+          .attr('y', y)
+          .attr('text-anchor', flip ? 'end' : 'start')
+      })
     }
 
     const plotExtent = [[margin.left, margin.top], [width - margin.right, height - margin.bottom]]
@@ -401,11 +409,11 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
       tooltip.hidden = false
       tooltip.replaceChildren()
       const heading = document.createElement('strong')
-      heading.textContent = `Peak #${cell.peakRank} · ${cell.band.label} ` +
+      heading.textContent = `Peak #${cell.peakRank}, ${cell.band.label} ` +
         `${cell.band.label === '1' ? 'year' : 'years'} in the top 10`
       const detail = document.createElement('span')
       detail.textContent = `${cell.names.length} ` +
-        `${cell.names.length === 1 ? 'name' : 'names'} · ${(cell.share * 100).toFixed(1)}% of the field`
+        `${cell.names.length === 1 ? 'name' : 'names'}, ${(cell.share * 100).toFixed(1)}% of the field`
       tooltip.append(heading, detail)
 
       const who = document.createElement('span')
@@ -426,20 +434,13 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
     dots.on('pointerenter', (event, point) => {
       tooltip.hidden = false
       tooltip.replaceChildren()
+      // Just whose dot it is and the two values it is plotted by
       const heading = document.createElement('strong')
-      heading.textContent = `${point.name} · ${point.country.name}`
+      heading.textContent = `${point.name}, ${point.country.name}`
       const detail = document.createElement('span')
-      detail.textContent =
-        `peaked at #${point.peakRank} in ${point.peakYear} · ${point.longevity} ` +
-        `${point.longevity === 1 ? 'year' : 'years'} in the top 10`
+      detail.textContent = `Peak #${point.peakRank}, ${point.longevity} ` +
+        `${point.longevity === 1 ? 'year' : 'years'} in top 10`
       tooltip.append(heading, detail)
-
-      if (point.censored) {
-        const note = document.createElement('span')
-        note.className = 'peak-tooltip-note'
-        note.textContent = 'ran past the edge of the period, so the count is a minimum'
-        tooltip.append(note)
-      }
 
       const cx = zx(point.jx)
       const cy = zy(point.jy)
@@ -453,12 +454,11 @@ export function setupPeakScatter(panel, sunburstPanel, filterBar) {
   }
 
   function selectName(name) {
-    const next = name === selectedName ? null : name
-    sunburstPanel.dispatchEvent(new CustomEvent('selectname', { detail: { name: next } }))
+    sunburstPanel.dispatchEvent(new CustomEvent('togglename', { detail: { name } }))
   }
 
   sunburstPanel.addEventListener('namechange', (event) => {
-    selectedName = event.detail.name
+    selectedNames = new Set(event.detail.names)
     render()
   })
   // A mark only hears pointerleave if the pointer leaves IT. Sweep the cursor out of

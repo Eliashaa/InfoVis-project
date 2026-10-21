@@ -2,11 +2,22 @@ import d3 from './d3.js'
 import { visibleCountries } from './countries.js'
 import { TIME_MARGIN, timeDomain, timeTicks } from './timeAxis.js'
 import { BABYNAMES_CSV } from './paths.js'
+import { MUTED, PAGE } from './theme.js'
 
 // A country the selected name never reached still has a churn line worth drawing - it
 // is the context the name's own countries are read against - but it is not part of the
 // story being told, so it drops to grey.
-const ABSENT = '#c9c7cd'
+const ABSENT = MUTED
+
+const listFormat = new Intl.ListFormat('en', { type: 'conjunction' })
+
+// Colour already says which country a marker belongs to, so shape says which name:
+// the first name picked is a circle, the second a square. Filled is an entry,
+// hollow an exit, for both.
+const NAME_SHAPES = [
+  { symbol: d3.symbolCircle, key: 'turnover-key-circle' },
+  { symbol: d3.symbolSquare, key: 'turnover-key-square' },
+]
 
 export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
   const chart = panel.querySelector('.turnover-chart')
@@ -16,7 +27,7 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
   const endYearInput = filterBar.querySelector('#year-end')
   let rows = []
   let dataLoaded = false
-  let selectedName = null
+  let selectedNames = []
   let dataYears = [0, 0]
 
   function yearInterval() {
@@ -54,30 +65,29 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
     })
   }
 
-  // Which countries carried the selected name at all inside the chosen years. This is
-  // presence, not entries and exits: a name can hold a place for the whole window
+  // Which countries carried any of the selected names inside the chosen years. This
+  // is presence, not entries and exits: a name can hold a place for the whole window
   // without ever being seen to arrive or leave, and that country is still part of its
   // story. Null when nothing is selected, which means "colour everything normally".
   function nameCountries() {
-    if (!selectedName) return null
+    if (!selectedNames.length) return null
     const gender = filterBar.querySelector('input[name="gender"]:checked').value
     const [startYear, endYear] = yearInterval()
     return new Set(rows
-      .filter((row) => row.name === selectedName &&
+      .filter((row) => selectedNames.includes(row.name) &&
         row.year >= startYear && row.year <= endYear &&
         (gender === 'all' || row.sex === gender))
       .map((row) => row.country))
   }
 
-  // The years the selected name joined or left a country's top 10. An entry is only
+  // The years a selected name joined or left a country's top 10. An entry is only
   // observed if the name was absent the year before, so a name already listed in the
   // first year of the dataset has no visible entry - the same censoring the lifecycle
   // scatter runs into. Re-entries are reported, not just the first spell.
-  function nameEvents(countryName) {
-    if (!selectedName) return { entries: [], exits: [] }
+  function nameEvents(countryName, name) {
     const gender = filterBar.querySelector('input[name="gender"]:checked').value
     const present = new Set(rows
-      .filter((row) => row.country === countryName && row.name === selectedName &&
+      .filter((row) => row.country === countryName && row.name === name &&
         (gender === 'all' || row.sex === gender))
       .map((row) => row.year))
     const [firstYear, lastYear] = dataYears
@@ -92,6 +102,9 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
         .filter((year) => year < lastYear && !present.has(year + 1))
         .map((year) => year + 1)
         .sort((left, right) => left - right),
+      // Already listed when the selected period opens, so its arrival happened at or
+      // before the start and is never seen as an entry
+      atStart: present.has(yearInterval()[0]),
     }
   }
 
@@ -102,28 +115,21 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
     chart.append(message)
   }
 
+  // The lines are labelled at their ends, so the legend only has to explain the
+  // name markers
   function renderLegend() {
-    const reached = nameCountries()
-    const items = visibleCountries(filterBar).map((country) => {
-      const item = document.createElement('span')
-      const swatch = document.createElement('i')
-      swatch.className = 'turnover-swatch'
-      swatch.style.background =
-        reached && !reached.has(country.name) ? ABSENT : country.color
-      item.append(swatch, country.name)
-      return item
-    })
-
-    if (selectedName) {
-      ;[['turnover-key-in', `${selectedName} entered`], ['turnover-key-out', `${selectedName} left`]]
+    const items = []
+    selectedNames.forEach((name, index) => {
+      const shape = NAME_SHAPES[index % NAME_SHAPES.length].key
+      ;[['turnover-key-in', `${name} entered`], ['turnover-key-out', `${name} left`]]
         .forEach(([className, text]) => {
           const item = document.createElement('span')
           const mark = document.createElement('i')
-          mark.className = `turnover-swatch ${className}`
+          mark.className = `turnover-swatch ${shape} ${className}`
           item.append(mark, text)
           items.push(item)
         })
-    }
+    })
     legend.replaceChildren(...items)
   }
 
@@ -147,8 +153,8 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
       return showMessage('Widen the year interval to compare at least two years')
     }
 
-    subtitle.textContent = selectedName
-      ? `Share of each year’s top 10 that is new, and where ${selectedName} joined or left`
+    subtitle.textContent = selectedNames.length
+      ? `Share of each year’s top 10 that is new, and where ${listFormat.format(selectedNames)} joined or left`
       : 'Share of each year’s top 10 that was not there the year before'
 
     // 2000 has no turnover value, so this chart starts a year later than the timeline
@@ -221,7 +227,7 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
       .attr('d', (country) => line(country.points))
       .attr('stroke', inkFor)
 
-    // Three series, so they are direct-labelled as well as listed in the legend
+    // Three series, so they are labelled directly at their ends instead of in a legend
     rows_.append('text')
       .attr('class', 'turnover-label')
       .attr('x', (country) => x(country.points.at(-1).year) + 6)
@@ -230,27 +236,32 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
       .attr('fill', inkFor)
       .text((country) => country.name)
 
-    // --- where the selected name joined or left each country's top 10 ---
+    // --- where the selected names joined or left each country's top 10 ---
     // Only a dot, deliberately: the year itself is the timeline's job, so repeating it
     // here would say nothing new. What the timeline cannot show is the dot's HEIGHT -
     // how busy that country's top 10 was in the year the name arrived or left.
-    const events = drawn.flatMap((country) => {
-      const { entries, exits } = nameEvents(country.name)
+    // A name that was already in the top 10 when the period opens is marked as entered
+    // at the left end of the line. The start year itself has no turnover value, so the
+    // first plotted year carries it, and the tooltip says it was there from the start.
+    const firstPlotted = startYear + 1
+    const events = drawn.flatMap((country) => selectedNames.flatMap((name, index) => {
+      const { entries, exits, atStart } = nameEvents(country.name, name)
+      const shape = NAME_SHAPES[index % NAME_SHAPES.length].symbol
       return [
-        ...entries.map((year) => ({ country, year, kind: 'in' })),
-        ...exits.map((year) => ({ country, year, kind: 'out' })),
+        ...(atStart ? [{ country, name, shape, year: firstPlotted, kind: 'in', fromStart: true }] : []),
+        ...entries.map((year) => ({ country, name, shape, year, kind: 'in' })),
+        ...exits.map((year) => ({ country, name, shape, year, kind: 'out' })),
       ]
-    }).filter((event) => event.year >= x.domain()[0] && event.year <= x.domain()[1])
+    })).filter((event) => event.year >= x.domain()[0] && event.year <= x.domain()[1])
 
-    svg.append('g').selectAll('circle').data(events).join('circle')
+    svg.append('g').selectAll('path').data(events).join('path')
       .attr('class', 'turnover-event-dot')
-      .attr('r', 4)
-      .attr('cx', (event) => x(event.year))
-      .attr('cy', (event) => {
+      .attr('d', (event) => d3.symbol(event.shape, 56)())
+      .attr('transform', (event) => {
         const point = event.country.points.find((item) => item.year === event.year)
-        return point ? y(point.share) : height - margin.bottom
+        return `translate(${x(event.year)},${point ? y(point.share) : height - margin.bottom})`
       })
-      .attr('fill', (event) => event.kind === 'in' ? event.country.color : '#fff')
+      .attr('fill', (event) => event.kind === 'in' ? event.country.color : PAGE)
       .attr('stroke', (event) => event.country.color)
 
     // --- hover layer: one crosshair for the year, all three values at once ---
@@ -315,8 +326,9 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
       events.filter((event) => event.year === year).forEach((event) => {
         const note = document.createElement('span')
         note.className = 'turnover-tooltip-event'
-        note.textContent =
-          `${selectedName} ${event.kind === 'in' ? 'entered' : 'left'} ${event.country.name}`
+        note.textContent = event.fromStart
+          ? `${event.name} already in ${event.country.name}’s top 10 in ${startYear}`
+          : `${event.name} ${event.kind === 'in' ? 'entered' : 'left'} ${event.country.name}`
         tooltip.append(note)
       })
 
@@ -341,7 +353,7 @@ export function setupTurnoverChart(panel, sunburstPanel, filterBar) {
 
   renderLegend()
   sunburstPanel.addEventListener('namechange', (event) => {
-    selectedName = event.detail.name
+    selectedNames = event.detail.names
     render()
   })
   startYearInput.addEventListener('input', render)

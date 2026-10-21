@@ -1,4 +1,4 @@
-# Scandinavian Baby Names
+# Book of Names: Top 10 Scandinavian Baby Names
 
 An information visualization project for exploring popular baby names in Denmark, Norway, and Sweden from 2000 to 2022. The dataset contains top-10 records sourced from SSB, Statistics Denmark, and SCB.
 
@@ -36,12 +36,18 @@ be reloaded and used without an internet connection.
 
 ## Using the visualization
 
-The dashboard is four linked panels sharing one set of filters. Selecting a name in
-any panel updates all of them.
+The dashboard is four linked panels sharing one set of filters. Up to two names can
+be selected at once, and selecting a name in any panel updates all of them.
+
+Colours stay the same across the dashboard: Sweden is blue, Norway red and Denmark
+green, and girls' names are pink and boys' names blue in the filters, the name chips,
+the names list and the diffusion labels.
 
 ### Filters
 
-- **Name search** — type to highlight matching names, or pick one from the suggestions.
+- **Name search** — type to highlight matching names, or pick one from the suggestions
+  to add it. Selected names appear as chips in the search box; click a chip's × (or
+  press Backspace in the empty box) to remove it. Up to two names at a time.
 - **Year interval** — the two-handle slider sets the period every panel reports on.
 - **Gender** and **Country** — narrow the dataset; `All` is the default for both.
 - **Reset all** — clears the selection and returns the year, gender and country filters
@@ -55,13 +61,16 @@ any panel updates all of them.
   country's top 10, placed at that year's churn level.
 - **Name characteristics** — a sunburst of the available names, grouped by name length
   (inner ring) then first letter (outer ring). Select a segment to narrow the names
-  list; the chosen group expands outward and reveals its letters. Click the middle to
-  clear the sunburst's own selection.
-- **Cross-country diffusion** — for the selected name, the years it held a place in
-  each country's top 10, with its peak rank marked.
-- **Name lifecycle landscape** — one dot per name and country, plotting how fast a name
-  rose (years from entry to peak) against how long it lasted (years in the top 10).
-  Scroll to zoom, drag to pan, double-click to reset. Click a dot to select that name.
+  list; the chosen group expands outward and reveals its letters. The segments of
+  every selected name stay highlighted. Click a name in the list to add it, click it
+  again to remove it. Click the middle to clear the sunburst's own selection.
+- **Cross-country diffusion** — for each selected name, the years it held a place in
+  each country's top 10, with its peak rank marked. With several names, each country
+  row splits into one bar per name, labelled on the right.
+- **Peak against longevity** — one dot per name and country, plotting the best rank a
+  name reached against how many years it spent in the top 10. Every selected name is
+  highlighted in each country. Scroll to zoom, drag to pan, double-click to reset.
+  Click a dot to add or remove that name. The Density view groups the dots into cells.
 
 The two left-hand panels share an x-axis scale, so a given year sits at the same
 position in both and they can be read together.
@@ -87,10 +96,10 @@ flowchart TD
 	C --> D[Apply year, gender and country filters]
 	D --> E[Four linked panels]
 	E --> F{Choose an interaction}
-	F -->|Type or pick a name| G[Select a name]
+	F -->|Type or pick a name| G[Add or remove a name, up to two]
 	F -->|Select a sunburst segment| H[Filter by length or first letter]
-	F -->|Click a lifecycle dot| G
+	F -->|Click a scatter dot| G
 	H --> E
 	G --> I[Highlight across all panels]
-	I --> J[Diffusion, turnover markers and lifecycle dot follow]
+	I --> J[Diffusion rows, turnover markers and scatter dots follow]
 ```
